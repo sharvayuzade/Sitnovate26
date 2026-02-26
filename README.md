@@ -147,6 +147,157 @@ After each simulation run, the analysis module generates a structured report cov
 
 ---
 
+## 🔄 Software Development Life Cycle (SDLC)
+
+WorldSim follows a structured SDLC to ensure quality, traceability, and iterative improvement throughout the project.
+
+### Phase 1 — 📋 Planning
+
+| Item | Detail |
+|---|---|
+| **Project Goal** | Build a multi-agent RL simulation to model regional resource scarcity and emergent survival strategies |
+| **Scope** | Simulation engine, RL agents, trade/diplomacy logic, visualization dashboard, post-run analysis |
+| **Timeline** | Sprint-based development aligned with Sitnovate 2026 Hackathon milestones |
+| **Team Roles** | RL Engineers, Backend Developers, Visualization Developers, QA & Testing |
+| **Tools & Stack** | Python 3.10+, Stable-Baselines3, Streamlit, Plotly, pytest, Git/GitHub |
+| **Risk Factors** | RL convergence instability, computational cost of multi-agent training, event randomness reproducibility |
+
+---
+
+### Phase 2 — 📝 Requirements Analysis
+
+**Functional Requirements**
+- Simulate a configurable number of regions, each with four core resources (water, food, energy, land)
+- RL agents must learn resource allocation, trade, and diplomacy strategies autonomously
+- Climatic events must fire stochastically and alter regional resource availability
+- Visualization layer must display world state, trade networks, and event timelines in real time
+- Post-simulation analysis must classify emergent strategies and identify collapse events
+
+**Non-Functional Requirements**
+- Simulation must be deterministic when a fixed seed is provided (reproducibility)
+- Dashboard must render updates within one simulation cycle latency
+- Codebase must maintain >80% unit test coverage on core engine and agent logic
+- Configuration must be fully externalizable via `config.yaml` (no hardcoded simulation parameters)
+
+---
+
+### Phase 3 — 🏗️ System Design
+
+**High-Level Design**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Simulation Runner                    │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
+│  │  World State │  │  RL Agents   │  │ Event Engine │  │
+│  │  (regions,   │◄─┤  (PPO/DQN)  ├─►│  (climatic   │  │
+│  │   resources) │  │              │  │   shocks)    │  │
+│  └──────┬───────┘  └──────┬───────┘  └──────────────┘  │
+│         │                 │                             │
+│         ▼                 ▼                             │
+│  ┌──────────────────────────────┐                       │
+│  │     Logger / State Store     │                       │
+│  └──────────────┬───────────────┘                       │
+└─────────────────┼───────────────────────────────────────┘
+                  │
+      ┌───────────┴──────────┐
+      ▼                      ▼
+┌──────────────┐    ┌─────────────────┐
+│ Visualization│    │ Analysis Module │
+│  Dashboard   │    │ (reports, stats)│
+└──────────────┘    └─────────────────┘
+```
+
+**Low-Level Design Highlights**
+- `Region` class encapsulates per-cycle resource deltas, population state, and trade history
+- `RLAgent` wraps Stable-Baselines3 policy with a custom observation/action space adapter
+- `NegotiationModule` implements a structured proposal–counter-proposal–accept/reject handshake
+- `EventEngine` uses a weighted random scheduler with per-event severity distributions
+- `Logger` writes timestamped JSON snapshots for full post-run replay
+
+---
+
+### Phase 4 — 💻 Implementation
+
+Development is organized into modular sprints:
+
+| Sprint | Focus Area | Key Deliverables |
+|---|---|---|
+| **Sprint 1** | Core Engine | `world.py`, `region.py`, `resource_model.py` — basic resource depletion loop |
+| **Sprint 2** | Event System | `event_engine.py` — climatic event scheduler and effect application |
+| **Sprint 3** | RL Agents | `rl_agent.py`, `reward.py` — PPO agent with survival/growth reward signal |
+| **Sprint 4** | Trade & Diplomacy | `negotiation.py` — proposal handshake, trade acceptance logic |
+| **Sprint 5** | Visualization | `dashboard.py`, `resource_charts.py`, `trade_graph.py` — Streamlit/Plotly dashboards |
+| **Sprint 6** | Analysis | `strategy_analyzer.py`, `collapse_detector.py`, `report_generator.py` |
+| **Sprint 7** | Integration & Polish | End-to-end runner, config externalization, documentation |
+
+**Coding Standards**
+- PEP 8 style enforced via `flake8`
+- Type hints required on all public functions
+- Docstrings follow Google style format
+- All simulation parameters sourced from `config.yaml` — no magic numbers in code
+
+---
+
+### Phase 5 — 🧪 Testing
+
+| Test Type | Scope | Tooling |
+|---|---|---|
+| **Unit Tests** | Resource depletion arithmetic, event effect calculations, reward function correctness | `pytest` |
+| **Integration Tests** | Agent–world interaction, trade handshake end-to-end, logger output validity | `pytest` |
+| **Determinism Tests** | Simulation produces identical output for identical seeds across runs | `pytest` |
+| **Performance Tests** | Simulation completes 500 cycles with 8 regions within acceptable wall-clock time | Manual / CI timer |
+| **Visualization Tests** | Dashboard renders without runtime errors on sample log data | Manual smoke test |
+
+Run all tests:
+```bash
+pytest tests/ -v --tb=short
+```
+
+**Coverage Target**: ≥ 80% on `engine/`, `agents/`, and `simulation/` modules.
+
+---
+
+### Phase 6 — 🚢 Deployment
+
+WorldSim is primarily a research simulation tool deployed locally or on a shared compute node:
+
+**Local Deployment**
+```bash
+git clone https://github.com/sharvayuzade/Sitnovate26.git
+cd Sitnovate26
+pip install -r requirements.txt
+python simulation/runner.py --config config.yaml --cycles 500 --regions 8
+```
+
+**Dashboard Deployment**
+```bash
+streamlit run visualization/dashboard.py
+```
+
+**CI/CD Pipeline (GitHub Actions)**
+- On every pull request: run `flake8` lint check + full `pytest` suite
+- On merge to `main`: generate a sample simulation report as a build artifact
+- Environment: Python 3.10, Ubuntu latest runner
+
+---
+
+### Phase 7 — 🔧 Maintenance & Iteration
+
+| Activity | Frequency | Owner |
+|---|---|---|
+| Bug triage and hotfixes | As needed | All team members |
+| RL hyperparameter tuning | Per experiment run | RL Engineers |
+| New climatic event types | Feature sprints | Backend Developers |
+| Dashboard UX improvements | Feature sprints | Visualization Developers |
+| Dependency upgrades (SB3, Streamlit) | Quarterly | Team Lead |
+| Post-hackathon community contributions | Open | Community / Contributors |
+
+**Versioning Strategy**: Semantic versioning (`MAJOR.MINOR.PATCH`) tracked via Git tags.  
+**Feedback Loop**: Simulation analysis findings feed back into reward function design and event probability tuning.
+
+---
+
 ## 🚀 Getting Started
 
 ### Prerequisites
