@@ -2,6 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 import GlobeIntro from './components/GlobeIntro'
 import IndiaStateMap from './components/IndiaStateMap'
+import {
+  GdpPieChart, GdpLineChart,
+  ResourceBarChart, ResourceGenVsConChart,
+  BidAskChart, BidAskStateChart,
+  WelfareTrendChart, PopulationTrendChart,
+  TradeVolumeChart,
+} from './components/Charts'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 
@@ -23,6 +30,12 @@ function App() {
   const monitoredStates = useMemo(() => simResult?.states || [], [simResult])
   const healthyCount = simResult?.summary?.healthy_states?.length || 0
   const criticalCount = simResult?.summary?.critical_states?.length || 0
+
+  const stateNames = useMemo(() => monitoredStates.filter(s => s.alive !== false).map(s => s.state), [monitoredStates])
+  const stateSeries = simResult?.state_series || {}
+  const bidAskOverTime = simResult?.bid_ask_over_time || []
+  const bidAskByState = simResult?.bid_ask_by_state || {}
+  const resourceConsumption = simResult?.resource_consumption || []
 
   const slides = useMemo(
     () => [
@@ -191,7 +204,7 @@ function App() {
                 ))}
               </div>
             </div>
-            <div className="hero-orbit" />
+
           </section>
 
           <section className="kpi-grid">
@@ -254,11 +267,11 @@ function App() {
                 </datalist>
               </label>
               <div className="pill">API: {API_BASE}</div>
-              <div className="pill" style={{ marginTop: '0.45rem' }}>
-                Ollama: {ollamaLoading ? 'checking...' : ollamaStatus.ok ? 'connected' : 'offline'}
+              <div className="pill" style={{ marginTop: '0.35rem' }}>
+                Ollama: {ollamaLoading ? 'checking…' : ollamaStatus.ok ? '● connected' : '○ offline'}
               </div>
               {!!ollamaStatus.models.length && (
-                <div className="pill" style={{ marginTop: '0.45rem' }}>
+                <div className="pill" style={{ marginTop: '0.35rem' }}>
                   Models: {ollamaStatus.models.join(', ')}
                 </div>
               )}
@@ -359,8 +372,89 @@ function App() {
             </article>
           </section>
 
-          {/* === Climate & Trade Analytics === */}
+          {/* === CHARTS SECTION === */}
+
+          {/* GDP Charts */}
           <section className="panel-row">
+            <article className="panel panel-large glass chart-panel">
+              <div className="panel-head">
+                <h4>GDP Share by State</h4>
+                <span>Pie chart — proportional GDP contribution</span>
+              </div>
+              <GdpPieChart states={monitoredStates} />
+            </article>
+            <article className="panel glass chart-panel">
+              <div className="panel-head">
+                <h4>GDP Trend Over Ticks</h4>
+                <span>Line chart — per-state GDP evolution</span>
+              </div>
+              <GdpLineChart stateSeries={stateSeries} stateNames={stateNames} />
+            </article>
+          </section>
+
+          {/* Resource Consumption Charts */}
+          <section className="panel-row">
+            <article className="panel panel-large glass chart-panel">
+              <div className="panel-head">
+                <h4>Resource Consumption by State</h4>
+                <span>Water · Food · Energy consumed at final tick</span>
+              </div>
+              <ResourceBarChart resourceConsumption={resourceConsumption} />
+            </article>
+            <article className="panel glass chart-panel">
+              <div className="panel-head">
+                <h4>Generation vs Consumption</h4>
+                <span>Resource production vs usage comparison</span>
+              </div>
+              <ResourceGenVsConChart resourceConsumption={resourceConsumption} />
+            </article>
+          </section>
+
+          {/* Bid vs Ask Negotiations */}
+          <section className="panel-row">
+            <article className="panel panel-large glass chart-panel">
+              <div className="panel-head">
+                <h4>Bid vs Ask Negotiations Over Time</h4>
+                <span>Order flow + average bid/ask price per tick</span>
+              </div>
+              <BidAskChart bidAskOverTime={bidAskOverTime} />
+            </article>
+            <article className="panel glass chart-panel">
+              <div className="panel-head">
+                <h4>Bid vs Ask Per State</h4>
+                <span>Horizontal bar — order distribution</span>
+              </div>
+              <BidAskStateChart bidAskByState={bidAskByState} />
+            </article>
+          </section>
+
+          {/* Welfare Trend */}
+          <section className="panel-row">
+            <article className="panel panel-large glass chart-panel">
+              <div className="panel-head">
+                <h4>Welfare Index Trend</h4>
+                <span>Per-state welfare trajectory across all ticks</span>
+              </div>
+              <WelfareTrendChart stateSeries={stateSeries} stateNames={stateNames} />
+            </article>
+            <article className="panel glass chart-panel">
+              <div className="panel-head">
+                <h4>Population Trend</h4>
+                <span>Stacked area — state populations over time</span>
+              </div>
+              <PopulationTrendChart stateSeries={stateSeries} stateNames={stateNames} />
+            </article>
+          </section>
+
+          {/* Trade Volume + Climate & Trade Analytics */}
+          <section className="panel-row">
+            <article className="panel panel-large glass chart-panel">
+              <div className="panel-head">
+                <h4>Trade Execution by State</h4>
+                <span>Executed vs pending orders per state</span>
+              </div>
+              <TradeVolumeChart states={monitoredStates} />
+            </article>
             <article className="panel glass">
               <div className="panel-head">
                 <h4>Climate Events</h4>
@@ -377,7 +471,9 @@ function App() {
                   : <li><span>Run analysis to see climate data</span></li>}
               </ul>
             </article>
+          </section>
 
+          <section className="panel-row">
             <article className="panel glass">
               <div className="panel-head">
                 <h4>Trade Analytics</h4>
@@ -418,7 +514,7 @@ function App() {
                 <li><span>🔴 Critical</span><strong>&lt; 0.4 or negative GDP growth</strong></li>
               </ul>
               {s && (
-                <div style={{ marginTop: '0.8rem', fontSize: '0.82rem', color: '#94a3b8' }}>
+                <div style={{ marginTop: '0.6rem', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                   <p>Dataset: 10,000 rows · {s.total_data_rows} in range</p>
                   <p>Tick range: {s.tick_range?.[0]}–{s.tick_range?.[1]}</p>
                 </div>
@@ -428,7 +524,7 @@ function App() {
 
           <section className="footer-note glass">
             <p>
-              India Resource Nexus · Powered by 10K-row synthetic dataset · Backend: <code>uvicorn worldsim_api:app --reload --port 8000</code>
+              India Resource Nexus · Powered by Government of India datasets from data.gov.in, India-WRIS &amp; NITI Aayog NDAP
             </p>
           </section>
         </main>

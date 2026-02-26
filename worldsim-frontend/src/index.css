@@ -1,29 +1,52 @@
+/* ====================================================================
+   index.css — Global Reset & Typography (Industry-grade)
+   ==================================================================== */
 :root {
-  font-family: Inter, Segoe UI, system-ui, -apple-system, sans-serif;
+  /* Palette */
+  --bg-primary:    #0a0e1a;
+  --bg-surface:    #111827;
+  --bg-card:       rgba(17, 24, 39, 0.85);
+  --bg-elevated:   rgba(30, 41, 59, 0.6);
+  --border:        rgba(51, 65, 85, 0.5);
+  --border-subtle: rgba(51, 65, 85, 0.3);
+  --text-primary:  #f1f5f9;
+  --text-secondary:#94a3b8;
+  --text-muted:    #64748b;
+  --accent:        #3b82f6;
+  --accent-dim:    rgba(59, 130, 246, 0.15);
+  --accent-border: rgba(59, 130, 246, 0.35);
+  --success:       #10b981;
+  --danger:        #ef4444;
+  --warning:       #f59e0b;
+  --radius-sm:     4px;
+  --radius-md:     6px;
+  --radius-lg:     8px;
+
+  font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-size: 14px;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
-html,
-body,
-#root {
+html, body, #root {
   margin: 0;
-  min-width: 320px;
   min-height: 100vh;
   width: 100%;
 }
 
 body {
-  background:
-    radial-gradient(1000px 500px at -10% -10%, rgba(14, 165, 233, 0.22), transparent 60%),
-    radial-gradient(1000px 550px at 110% 120%, rgba(34, 211, 238, 0.16), transparent 60%),
-    #020617;
+  background: var(--bg-primary);
+  color: var(--text-primary);
 }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }

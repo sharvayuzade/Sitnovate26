@@ -45,7 +45,7 @@ function stateColor(state) {
   if (!state.alive) return '#dc2626'
   const w = state.welfare_index ?? 0
   if (w >= 0.8) return '#22c55e'
-  if (w >= 0.6) return '#38bdf8'
+  if (w >= 0.6) return '#3b82f6'
   if (w >= 0.4) return '#f59e0b'
   return '#f97316'
 }
@@ -158,7 +158,7 @@ export default function IndiaStateMap({ states = [] }) {
       {/* Legend */}
       <div className="india-legend">
         <span><i style={{ background: '#22c55e' }} /> Welfare ≥ 0.8</span>
-        <span><i style={{ background: '#38bdf8' }} /> ≥ 0.6</span>
+        <span><i style={{ background: '#3b82f6' }} /> ≥ 0.6</span>
         <span><i style={{ background: '#f59e0b' }} /> ≥ 0.4</span>
         <span><i style={{ background: '#f97316' }} /> &lt; 0.4</span>
         <span><i style={{ background: '#dc2626' }} /> Critical</span>

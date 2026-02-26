@@ -264,6 +264,54 @@ def simulate(payload: SimulationRequest) -> Dict[str, Any]:
     # Global time series
     gseries = world.global_series()
 
+    # Per-state time series (for frontend charts)
+    state_series_data: dict[str, Any] = {}
+    for sname in world.states:
+        ss = world.state_series(sname)
+        state_series_data[sname] = ss
+
+    # Bid vs Ask aggregation per state
+    bid_ask_by_state: dict[str, dict[str, int]] = {}
+    for sname in world.states:
+        bid_ask_by_state[sname] = {"bid": 0, "ask": 0}
+    for r in world.rows:
+        ot = r.get("order_type", "").strip().lower()
+        sn = r.get("state", "")
+        if sn in bid_ask_by_state and ot in ("bid", "ask"):
+            bid_ask_by_state[sn][ot] += 1
+
+    # Bid vs Ask over ticks (global)
+    bid_ask_over_time: list[dict[str, Any]] = []
+    for tick in world.ticks:
+        tick_rows = [r for r in world.rows if r["tick"] == tick]
+        bids = sum(1 for r in tick_rows if r.get("order_type", "").strip().lower() == "bid")
+        asks = sum(1 for r in tick_rows if r.get("order_type", "").strip().lower() == "ask")
+        avg_bid_price = 0.0
+        avg_ask_price = 0.0
+        bid_rows = [r for r in tick_rows if r.get("order_type", "").strip().lower() == "bid"]
+        ask_rows = [r for r in tick_rows if r.get("order_type", "").strip().lower() == "ask"]
+        if bid_rows:
+            avg_bid_price = round(sum(r["trade_price"] for r in bid_rows) / len(bid_rows), 2)
+        if ask_rows:
+            avg_ask_price = round(sum(r["trade_price"] for r in ask_rows) / len(ask_rows), 2)
+        bid_ask_over_time.append({
+            "tick": tick, "bids": bids, "asks": asks,
+            "avg_bid_price": avg_bid_price, "avg_ask_price": avg_ask_price,
+        })
+
+    # Resource consumption per state at final tick
+    resource_consumption: list[dict[str, Any]] = []
+    for st in states:
+        resource_consumption.append({
+            "state": st["state"],
+            "water_consumed": round(st.get("water_consumed", 0), 1),
+            "food_consumed": round(st.get("food_consumed", 0), 1),
+            "energy_consumed": round(st.get("energy_consumed", 0), 1),
+            "water_generated": round(st.get("water_generated", 0), 1),
+            "food_generated": round(st.get("food_generated", 0), 1),
+            "energy_generated": round(st.get("energy_generated", 0), 1),
+        })
+
     response_payload: dict[str, Any] = {
         "summary": {
             "final_tick": summary["final_tick"],
@@ -293,6 +341,10 @@ def simulate(payload: SimulationRequest) -> Dict[str, Any]:
             "avg_welfare": gseries["avg_welfare"],
             "total_trade_volume": gseries["total_trade_volume"],
         },
+        "state_series": state_series_data,
+        "bid_ask_by_state": bid_ask_by_state,
+        "bid_ask_over_time": bid_ask_over_time,
+        "resource_consumption": resource_consumption,
     }
 
     # MongoDB persistence
