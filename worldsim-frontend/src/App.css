@@ -291,7 +291,7 @@
 .table-wrap {
   margin-top: 0.8rem;
   overflow: auto;
-  max-height: 280px;
+  max-height: 380px;
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 12px;
 }
@@ -299,15 +299,16 @@
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 560px;
+  min-width: 900px;
 }
 
 th,
 td {
   text-align: left;
-  padding: 0.55rem 0.65rem;
+  padding: 0.5rem 0.55rem;
   border-bottom: 1px solid rgba(148, 163, 184, 0.14);
-  font-size: 0.84rem;
+  font-size: 0.78rem;
+  white-space: nowrap;
 }
 
 th {
@@ -315,6 +316,28 @@ th {
   position: sticky;
   top: 0;
   background: rgba(15, 23, 42, 0.95);
+}
+
+.row-critical {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.text-red {
+  color: #fda4af;
+}
+
+.text-green {
+  color: #86efac;
+}
+
+.strategy-tag {
+  display: inline-block;
+  background: rgba(34, 211, 238, 0.15);
+  border: 1px solid rgba(34, 211, 238, 0.4);
+  color: #a5f3fc;
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.72rem;
 }
 
 .mix-list {
@@ -344,7 +367,7 @@ th {
   position: relative;
   border-radius: 14px;
   overflow: hidden;
-  min-height: 340px;
+  min-height: 520px;
   border: 1px solid rgba(148, 163, 184, 0.22);
   background: #0b1220;
 }
@@ -353,73 +376,132 @@ th {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 32% 22%, rgba(34, 197, 94, 0.16), transparent 52%),
-    radial-gradient(circle at 74% 64%, rgba(59, 130, 246, 0.2), transparent 54%),
+    radial-gradient(circle at 38% 30%, rgba(34, 197, 94, 0.12), transparent 52%),
+    radial-gradient(circle at 68% 60%, rgba(59, 130, 246, 0.15), transparent 54%),
     linear-gradient(160deg, #0f172a, #111827 48%, #0b1220);
+  z-index: 0;
 }
 
-.india-map-svg {
-  position: absolute;
-  inset: 0;
+.india-map-composed {
+  position: relative;
+  z-index: 1;
   width: 100%;
-  height: 100%;
-}
-
-.india-land {
-  fill: rgba(134, 239, 172, 0.14);
-  stroke: rgba(134, 239, 172, 0.4);
-  stroke-width: 0.55;
-}
-
-.india-river {
-  fill: none;
-  stroke: rgba(125, 211, 252, 0.45);
-  stroke-width: 0.45;
-}
-
-.india-label {
-  fill: #dbeafe;
-  font-size: 2.1px;
-  letter-spacing: 0.02em;
-  paint-order: stroke;
-  stroke: rgba(2, 6, 23, 0.9);
-  stroke-width: 0.35px;
+  height: auto;
 }
 
 .india-overlay-title {
   position: absolute;
   left: 0.8rem;
   top: 0.75rem;
+  z-index: 2;
 }
 
 .india-overlay-title h5 {
   margin: 0;
   font-size: 0.95rem;
   color: #c7d2fe;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.6);
 }
 
 .india-overlay-title p {
   margin: 0.2rem 0 0;
   font-size: 0.8rem;
   color: #93c5fd;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.5);
 }
 
+/* Legend bar */
+.india-legend {
+  position: absolute;
+  left: 0.8rem;
+  bottom: 0.8rem;
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  z-index: 3;
+}
+.india-legend span {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+.india-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+/* Hover card */
 .india-hover-card {
   position: absolute;
   right: 0.8rem;
-  bottom: 0.8rem;
-  width: min(380px, calc(100% - 1.6rem));
-  background: rgba(2, 6, 23, 0.76);
+  top: 0.75rem;
+  width: min(340px, calc(100% - 1.6rem));
+  background: rgba(2, 6, 23, 0.82);
   border: 1px solid rgba(148, 163, 184, 0.28);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(12px);
   border-radius: 12px;
   padding: 0.65rem 0.75rem;
+  z-index: 4;
 }
 
 .india-hover-card h6 {
   margin: 0;
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   color: #a5f3fc;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hover-badge {
+  font-size: 0.68rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.hover-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.35rem 0.5rem;
+  margin-top: 0.45rem;
+}
+.hover-grid div {
+  display: flex;
+  flex-direction: column;
+}
+.hover-grid label {
+  font-size: 0.62rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.hover-grid strong {
+  font-size: 0.82rem;
+  color: #e2e8f0;
+}
+
+.hover-strategy {
+  margin-top: 0.4rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid rgba(148,163,184,0.2);
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+.hover-strategy span {
+  color: #67e8f9;
+  font-weight: 600;
+}
+
+.hover-hint {
+  margin: 0.3rem 0 0;
+  color: #64748b;
+  font-size: 0.78rem;
+  line-height: 1.5;
 }
 
 .india-hover-card p {

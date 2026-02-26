@@ -19,6 +19,102 @@ The simulation is designed to surface **emergent behavior** — strategies that 
 
 ---
 
+## 🧠 Ollama Integration (Local LLM)
+
+This project supports local AI briefings through Ollama from the WorldSim API.
+
+### 1) Start Ollama and pull a model (Windows CMD)
+
+```cmd
+ollama serve
+```
+
+In another CMD window:
+
+```cmd
+ollama pull gemma3:4b
+ollama run gemma3:4b
+```
+
+### 2) Run backend and frontend
+
+Backend:
+
+```cmd
+cd "E:\Sharvayu data\Malware\Symbiosis Nagpur SIT\Hackathons\Sitnovate26\Sitnovate26"
+C:/Users/sharv/AppData/Local/Programs/Python/Python39/python.exe -m uvicorn worldsim_api:app --host 127.0.0.1 --port 8000
+```
+
+Frontend:
+
+```cmd
+cd "E:\Sharvayu data\Malware\Symbiosis Nagpur SIT\Hackathons\Sitnovate26\Sitnovate26\worldsim-frontend"
+npm run dev -- --host 127.0.0.1 --port 5173
+```
+
+### 3) Verify Ollama connectivity
+
+```cmd
+curl http://127.0.0.1:8000/api/ollama/status
+```
+
+Expected response includes:
+- `ok: true`
+- `base_url: "http://127.0.0.1:11434"`
+- `models: ["gemma3:4b", ...]`
+
+### 4) API endpoints used by the UI
+
+- `GET /api/ollama/status` → checks Ollama server and lists pulled models
+- `POST /api/ollama/analyze` → generates strategic AI briefing from simulation data
+
+### 5) Optional: custom Ollama host
+
+Set before starting backend:
+
+```cmd
+set OLLAMA_BASE_URL=http://127.0.0.1:11434
+```
+
+### 6) Troubleshooting (Quick Fixes)
+
+**A) `uvicorn ... --port 8000` exits immediately / port already in use**
+
+```cmd
+powershell -Command "$conn = Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue; if ($conn) { Stop-Process -Id $conn.OwningProcess -Force }"
+C:/Users/sharv/AppData/Local/Programs/Python/Python39/python.exe -m uvicorn worldsim_api:app --host 127.0.0.1 --port 8000
+```
+
+**B) `npm run dev` exits / port 5173 busy**
+
+```cmd
+powershell -Command "$conn = Get-NetTCPConnection -LocalPort 5173 -State Listen -ErrorAction SilentlyContinue; if ($conn) { Stop-Process -Id $conn.OwningProcess -Force }"
+cd "E:\Sharvayu data\Malware\Symbiosis Nagpur SIT\Hackathons\Sitnovate26\Sitnovate26\worldsim-frontend"
+npm run dev -- --host 127.0.0.1 --port 5173
+```
+
+**C) Ollama model not found**
+
+```cmd
+ollama pull gemma3:4b
+curl http://127.0.0.1:11434/api/tags
+```
+
+**D) Ollama analysis timeout on first request**
+
+- First inference can be slower due to model warm-up.
+- Keep `ollama serve` running.
+- Retry once after model is loaded (`ollama run gemma3:4b`).
+
+**E) Verify end-to-end status quickly**
+
+```cmd
+curl http://127.0.0.1:8000/api/health
+curl http://127.0.0.1:8000/api/ollama/status
+```
+
+---
+
 ## 🎯 Key Features
 
 | Feature | Description |

@@ -1,125 +1,249 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, memo, useCallback } from 'react'
+import {
+  ComposableMap,
+  Geographies,
+  Geography,
+  ZoomableGroup,
+} from 'react-simple-maps'
 
-const STATE_LAYOUT = {
-  Punjab: { x: 34, y: 21 },
-  Rajasthan: { x: 29, y: 33 },
-  Gujarat: { x: 25, y: 48 },
-  UttarPradesh: { x: 44, y: 30 },
-  MadhyaPradesh: { x: 40, y: 42 },
-  Maharashtra: { x: 36, y: 56 },
-  WestBengal: { x: 55, y: 40 },
-  Assam: { x: 66, y: 35 },
-  Karnataka: { x: 38, y: 72 },
-  TamilNadu: { x: 44, y: 84 },
-}
+const INDIA_TOPO_URL =
+  'https://gist.githubusercontent.com/jbrobst/56c13bbbf9d97d187fea01ca62ea5112/raw/e388c4cae20aa53cb5090210a42ebb9b765c0a36/india_states.geojson'
 
-const STATE_KEY = {
-  Punjab: 'Punjab',
-  Rajasthan: 'Rajasthan',
-  Gujarat: 'Gujarat',
-  UttarPradesh: 'Uttar Pradesh',
-  MadhyaPradesh: 'Madhya Pradesh',
-  Maharashtra: 'Maharashtra',
-  WestBengal: 'West Bengal',
-  Assam: 'Assam',
-  Karnataka: 'Karnataka',
-  TamilNadu: 'Tamil Nadu',
+/* 10 states we track in the dataset */
+const TRACKED_STATES = new Set([
+  'Punjab',
+  'Rajasthan',
+  'Gujarat',
+  'Uttar Pradesh',
+  'Madhya Pradesh',
+  'Maharashtra',
+  'West Bengal',
+  'Bihar',
+  'Karnataka',
+  'Tamil Nadu',
+])
+
+/* Map GeoJSON ST_NM names to our dataset names (most match 1-to-1) */
+function geoNameToDataset(geoName) {
+  const map = {
+    Punjab: 'Punjab',
+    Rajasthan: 'Rajasthan',
+    Gujarat: 'Gujarat',
+    'Uttar Pradesh': 'Uttar Pradesh',
+    'Madhya Pradesh': 'Madhya Pradesh',
+    Maharashtra: 'Maharashtra',
+    'West Bengal': 'West Bengal',
+    Bihar: 'Bihar',
+    Karnataka: 'Karnataka',
+    'Tamil Nadu': 'Tamil Nadu',
+  }
+  return map[geoName] || null
 }
 
 function stateColor(state) {
-  if (!state) return '#64748b'
-  if (!state.alive) return '#ef4444'
-  if (state.happiness >= 0.8) return '#22c55e'
-  if (state.happiness >= 0.6) return '#38bdf8'
-  if (state.happiness >= 0.4) return '#f59e0b'
+  if (!state) return 'rgba(100,116,139,0.18)' /* untracked — dim */
+  if (!state.alive) return '#dc2626'
+  const w = state.welfare_index ?? 0
+  if (w >= 0.8) return '#22c55e'
+  if (w >= 0.6) return '#38bdf8'
+  if (w >= 0.4) return '#f59e0b'
   return '#f97316'
 }
+
+const MemoGeography = memo(function MemoGeo({
+  geo,
+  dataState,
+  onMouseEnter,
+  onMouseLeave,
+}) {
+  const isTracked = !!dataState || TRACKED_STATES.has(geo.properties.ST_NM || geo.properties.st_nm || '')
+  return (
+    <Geography
+      geography={geo}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      style={{
+        default: {
+          fill: stateColor(dataState),
+          stroke: isTracked ? 'rgba(148,163,184,0.55)' : 'rgba(148,163,184,0.18)',
+          strokeWidth: isTracked ? 0.65 : 0.3,
+          outline: 'none',
+          transition: 'fill 0.25s ease',
+        },
+        hover: {
+          fill: dataState
+            ? stateColor(dataState)
+            : 'rgba(100,116,139,0.35)',
+          stroke: '#e0f2fe',
+          strokeWidth: 1.1,
+          outline: 'none',
+          cursor: dataState ? 'pointer' : 'default',
+          filter: dataState ? 'brightness(1.25)' : 'none',
+        },
+        pressed: {
+          fill: stateColor(dataState),
+          stroke: '#e0f2fe',
+          strokeWidth: 1.1,
+          outline: 'none',
+        },
+      }}
+    />
+  )
+})
 
 export default function IndiaStateMap({ states = [] }) {
   const [hovered, setHovered] = useState(null)
 
   const stateMap = useMemo(() => {
     const map = {}
-    for (const state of states) {
-      map[state.state] = state
+    for (const st of states) {
+      map[st.state] = st
     }
     return map
   }, [states])
 
   const hoveredState = hovered ? stateMap[hovered] : null
 
+  const handleMouseEnter = useCallback(
+    (datasetName) => () => {
+      if (datasetName) setHovered(datasetName)
+    },
+    []
+  )
+
+  const handleMouseLeave = useCallback(() => setHovered(null), [])
+
   return (
     <div className="india-map-wrap">
       <div className="india-map-bg" />
-      <svg viewBox="0 0 100 100" className="india-map-svg" preserveAspectRatio="none">
-        <defs>
-          <filter id="indiaGlow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="1.2" result="coloredBlur" />
-            <feMerge>
-              <feMergeNode in="coloredBlur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
 
-        <path
-          d="M34,10 L41,12 L48,20 L55,24 L60,31 L63,40 L61,48 L56,56 L54,63 L58,72 L55,86 L48,90 L43,85 L40,73 L34,66 L29,57 L25,48 L20,44 L17,37 L19,30 L24,24 L28,16 Z"
-          className="india-land"
-        />
+      <ComposableMap
+        projection="geoMercator"
+        projectionConfig={{
+          scale: 1000,
+          center: [82.5, 22],
+        }}
+        className="india-map-composed"
+        width={600}
+        height={620}
+      >
+        <ZoomableGroup center={[82.5, 22]} zoom={1}>
+          <Geographies geography={INDIA_TOPO_URL}>
+            {({ geographies }) =>
+              geographies.map((geo) => {
+                const geoName = geo.properties.ST_NM || geo.properties.st_nm || ''
+                const datasetName = geoNameToDataset(geoName)
+                const dataState = datasetName ? stateMap[datasetName] : null
+                return (
+                  <MemoGeography
+                    key={geo.rsmKey}
+                    geo={geo}
+                    dataState={dataState}
+                    onMouseEnter={handleMouseEnter(datasetName)}
+                    onMouseLeave={handleMouseLeave}
+                  />
+                )
+              })
+            }
+          </Geographies>
+        </ZoomableGroup>
+      </ComposableMap>
 
-        <path d="M33,17 L41,22 L45,31 L42,42 L38,53 L36,67" className="india-river" />
-        <path d="M47,27 L53,35 L54,46 L50,58 L50,72" className="india-river" />
-
-        {Object.entries(STATE_LAYOUT).map(([key, point]) => {
-          const label = STATE_KEY[key]
-          const liveState = stateMap[label]
-          const fill = stateColor(liveState)
-          const size = hovered === label ? 2.2 : 1.7
-
-          return (
-            <g
-              key={label}
-              className="india-point"
-              transform={`translate(${point.x} ${point.y})`}
-              onMouseEnter={() => setHovered(label)}
-              onMouseLeave={() => setHovered(null)}
-              style={{ cursor: 'pointer' }}
-            >
-              <circle r={size + 1.1} fill="rgba(15,23,42,0.68)" />
-              <circle r={size} fill={fill} filter="url(#indiaGlow)" />
-              <text x="2.6" y="-2" className="india-label">
-                {label}
-              </text>
-            </g>
-          )
-        })}
-      </svg>
-
+      {/* Title */}
       <div className="india-overlay-title">
-        <h5>India Resource Command Map</h5>
-        <p>10 monitored states · live hover intelligence</p>
+        <h5>India State Resource Map</h5>
+        <p>10 monitored states · hover for live data</p>
       </div>
 
+      {/* Legend */}
+      <div className="india-legend">
+        <span><i style={{ background: '#22c55e' }} /> Welfare ≥ 0.8</span>
+        <span><i style={{ background: '#38bdf8' }} /> ≥ 0.6</span>
+        <span><i style={{ background: '#f59e0b' }} /> ≥ 0.4</span>
+        <span><i style={{ background: '#f97316' }} /> &lt; 0.4</span>
+        <span><i style={{ background: '#dc2626' }} /> Critical</span>
+      </div>
+
+      {/* Hover card */}
       <div className="india-hover-card">
         {hoveredState ? (
           <>
-            <h6>{hoveredState.state}</h6>
-            <p>Status: {hoveredState.alive ? 'Stable' : 'Critical'}</p>
-            <p>Population Index: {Math.round(hoveredState.population || 0)}</p>
-            <p>Dominant Strategy: {hoveredState.dominant_strategy || '—'}</p>
-            <p>
-              Resources: W {Math.round(hoveredState.water || 0)} · F {Math.round(hoveredState.food || 0)} · E{' '}
-              {Math.round(hoveredState.energy || 0)} · L {Math.round(hoveredState.land || 0)}
-            </p>
-            <p>
-              Happiness: {(hoveredState.happiness || 0).toFixed(2)} · Tech: {(hoveredState.tech || 0).toFixed(2)}
-            </p>
-            <p>Source Region: {hoveredState.source_region}</p>
+            <h6>
+              {hoveredState.state}
+              <span
+                className="hover-badge"
+                style={{
+                  background: hoveredState.alive ? '#22c55e22' : '#dc262622',
+                  color: hoveredState.alive ? '#86efac' : '#fca5a5',
+                }}
+              >
+                {hoveredState.alive ? 'Stable' : 'Critical'}
+              </span>
+            </h6>
+            <div className="hover-grid">
+              <div>
+                <label>Population</label>
+                <strong>{Math.round(hoveredState.population || 0).toLocaleString()}</strong>
+              </div>
+              <div>
+                <label>GDP</label>
+                <strong>₹{(hoveredState.state_gdp || 0).toFixed(1)}Cr</strong>
+              </div>
+              <div>
+                <label>GDP Growth</label>
+                <strong className={(hoveredState.gdp_growth_rate || 0) >= 0 ? 'text-green' : 'text-red'}>
+                  {(hoveredState.gdp_growth_rate || 0).toFixed(1)}%
+                </strong>
+              </div>
+              <div>
+                <label>Welfare</label>
+                <strong>{(hoveredState.welfare_index || 0).toFixed(3)}</strong>
+              </div>
+              <div>
+                <label>Water</label>
+                <strong>{Math.round(hoveredState.water_supply || 0)}</strong>
+              </div>
+              <div>
+                <label>Food</label>
+                <strong>{Math.round(hoveredState.food_supply || 0)}</strong>
+              </div>
+              <div>
+                <label>Energy</label>
+                <strong>{Math.round(hoveredState.energy_supply || 0)}</strong>
+              </div>
+              <div>
+                <label>Inequality</label>
+                <strong>{(hoveredState.inequality_index || 0).toFixed(3)}</strong>
+              </div>
+              <div>
+                <label>Net Migration</label>
+                <strong>{(hoveredState.net_migration || 0).toLocaleString()}</strong>
+              </div>
+              <div>
+                <label>Trades</label>
+                <strong>{hoveredState.executed_trades || 0}/{hoveredState.total_orders || 0}</strong>
+              </div>
+              <div>
+                <label>Climate</label>
+                <strong>{hoveredState.climate_event || 'None'}</strong>
+              </div>
+              <div>
+                <label>Shock</label>
+                <strong>{(hoveredState.shock_intensity || 0).toFixed(2)}</strong>
+              </div>
+            </div>
+            {hoveredState.dominant_strategy && (
+              <div className="hover-strategy">
+                Strategy: <span>{hoveredState.dominant_strategy}</span>
+              </div>
+            )}
           </>
         ) : (
           <>
-            <h6>Hover for State Intel</h6>
-            <p>Move on any state marker to view status, resources, strategy, and source mapping.</p>
+            <h6>Hover any state for intel</h6>
+            <p className="hover-hint">
+              Coloured states are monitored. Hover to see GDP, welfare, resources, trade &amp; climate data.
+            </p>
           </>
         )}
       </div>

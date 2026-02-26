@@ -1,272 +1,129 @@
 """
-WorldSim Agents — Reinforcement Learning Module
-=================================================
-Implements Q-learning agents that autonomously learn resource management,
-trade, and survival strategies through interaction with the simulation.
-
-Each agent governs a region and learns without pre-programmed rules.
+WorldSim Agents — Dataset-Driven Strategy Analyzer
+====================================================
+Instead of training RL agents, this module analyzes the CSV dataset to derive
+dominant resource strategies, trade behaviours, climate resilience scores,
+and per-state strategy classifications.
 """
 
+from __future__ import annotations
+
+from collections import Counter, defaultdict
+from typing import Any, Dict, List
+
 import numpy as np
-import random
-from collections import defaultdict
-from typing import Dict, List, Tuple
 
-# ════════════════════════════════════════════════════════════════
-# ACTION SPACE
-# ════════════════════════════════════════════════════════════════
+from worldsim_engine import World
 
-ACTIONS = [
-    "focus_water",   # 0 — invest extra production in water
-    "focus_food",    # 1 — invest extra production in food
-    "focus_energy",  # 2 — invest extra production in energy
-    "expand_land",   # 3 — develop / reclaim land
-    "conserve",      # 4 — reduce consumption (rationing)
-    "trade",         # 5 — engage in bilateral trade
-    "research",      # 6 — improve technology level
-    "stockpile",     # 7 — expand storage capacity
-    "balance",       # 8 — moderate balanced approach
-]
-
-ACTION_DESCRIPTIONS = {
-    "focus_water":  "Prioritise water production",
-    "focus_food":   "Prioritise food production",
-    "focus_energy": "Prioritise energy production",
-    "expand_land":  "Develop & reclaim land",
-    "conserve":     "Ration resources to reduce consumption",
-    "trade":        "Negotiate bilateral trades with neighbours",
-    "research":     "Invest in technology advancement",
-    "stockpile":    "Build reserves & expand storage",
-    "balance":      "Balanced moderate approach across all areas",
+# Strategy labels derived from data patterns
+STRATEGY_LABELS = {
+    "Trade-Heavy": "State with above-median executed trades",
+    "Resource-Conservative": "State consumes less than it generates across resources",
+    "Growth-Focused": "State with above-median GDP growth rate",
+    "Welfare-Priority": "State with above-median welfare index",
+    "Migration-Attracting": "State with positive net migration",
+    "Climate-Resilient": "State maintains welfare despite high shock exposure",
 }
 
-NUM_ACTIONS = len(ACTIONS)
 
+class StrategyAnalyzer:
+    """Analyze the dataset and classify each state's dominant strategy."""
 
-# ════════════════════════════════════════════════════════════════
-# Q-LEARNING AGENT
-# ════════════════════════════════════════════════════════════════
+    def __init__(self, world: World):
+        self.world = world
 
-class QLearningAgent:
-    """Tabular Q-learning agent governing a single region.
+    def classify_state(self, state: str) -> Dict[str, Any]:
+        """Classify a single state based on its aggregate behaviour."""
+        rows = self.world.by_state.get(state, [])
+        if not rows:
+            return {"state": state, "strategy": "Unknown", "tags": [], "scores": {}}
 
-    State space  : (water_lvl, food_lvl, energy_lvl, land_lvl, pop_bucket, happiness_bucket)
-                   each discretised into a small number of bins.
-    Action space : 9 discrete actions (see ACTIONS list).
-    """
+        avg_gdp_growth = float(np.mean([r["gdp_growth_rate"] for r in rows]))
+        avg_welfare = float(np.mean([r["welfare_index"] for r in rows]))
+        avg_inequality = float(np.mean([r["inequality_index"] for r in rows]))
+        avg_shock = float(np.mean([r["shock_intensity"] for r in rows]))
 
-    def __init__(
-        self,
-        name: str,
-        learning_rate: float = 0.15,
-        discount_factor: float = 0.95,
-        epsilon_start: float = 1.0,
-        epsilon_end: float = 0.05,
-        epsilon_decay: float = 0.994,
-    ):
-        self.name = name
-        self.lr = learning_rate
-        self.gamma = discount_factor
-        self.epsilon = epsilon_start
-        self.epsilon_end = epsilon_end
-        self.epsilon_decay = epsilon_decay
-
-        # Q-table: state tuple -> array of Q-values (one per action)
-        self.q_table: Dict[tuple, np.ndarray] = defaultdict(
-            lambda: np.zeros(NUM_ACTIONS, dtype=np.float64)
+        total_generated = sum(
+            r["water_generated"] + r["food_generated"] + r["energy_generated"]
+            for r in rows
+        )
+        total_consumed = sum(
+            r["water_consumed"] + r["food_consumed"] + r["energy_consumed"]
+            for r in rows
         )
 
-        self.last_state: tuple = None
-        self.last_action_idx: int = None
+        executed = sum(r["trade_executed"] for r in rows)
+        total_orders = len(rows)
+        trade_rate = executed / max(total_orders, 1)
 
-        # Tracking
-        self.action_history: List[int] = []
-        self.reward_history: List[float] = []
-        self.epsilon_history: List[float] = []
-        self.total_reward: float = 0.0
-        self.states_visited: set = set()
+        net_migration = sum(r["migration_in"] - r["migration_out"] for r in rows)
 
-    # ─── Action Selection ───────────────────────────────────────
+        tags: list[str] = []
+        if trade_rate > 0.5:
+            tags.append("Trade-Heavy")
+        if total_consumed < total_generated * 0.85:
+            tags.append("Resource-Conservative")
+        if avg_gdp_growth > 3.0:
+            tags.append("Growth-Focused")
+        if avg_welfare > 0.5:
+            tags.append("Welfare-Priority")
+        if net_migration > 0:
+            tags.append("Migration-Attracting")
+        if avg_welfare > 0.4 and avg_shock > 0.4:
+            tags.append("Climate-Resilient")
 
-    def get_action(self, state: tuple) -> dict:
-        """Epsilon-greedy action selection."""
-        self.states_visited.add(state)
+        # Dominant = most defining tag (first match priority)
+        dominant = tags[0] if tags else "Balanced"
 
-        if random.random() < self.epsilon:
-            action_idx = random.randint(0, NUM_ACTIONS - 1)
-        else:
-            q_vals = self.q_table[state]
-            # Break ties randomly
-            max_q = np.max(q_vals)
-            candidates = np.where(np.abs(q_vals - max_q) < 1e-8)[0]
-            action_idx = int(np.random.choice(candidates))
+        return {
+            "state": state,
+            "dominant_strategy": dominant,
+            "tags": tags,
+            "scores": {
+                "avg_gdp_growth": round(avg_gdp_growth, 2),
+                "avg_welfare": round(avg_welfare, 4),
+                "avg_inequality": round(avg_inequality, 4),
+                "avg_shock": round(avg_shock, 4),
+                "trade_execution_rate": round(trade_rate, 4),
+                "net_migration": net_migration,
+                "resource_surplus_ratio": round(
+                    total_generated / max(total_consumed, 1), 4
+                ),
+            },
+        }
 
-        self.last_state = state
-        self.last_action_idx = action_idx
-        self.action_history.append(action_idx)
-        self.epsilon_history.append(self.epsilon)
+    def classify_all(self) -> Dict[str, Dict[str, Any]]:
+        """Classify all states."""
+        return {state: self.classify_state(state) for state in self.world.states}
 
-        return {"action": ACTIONS[action_idx], "action_idx": action_idx}
+    def strategy_mix(self) -> List[Dict[str, Any]]:
+        """Count of each dominant strategy across all states."""
+        all_classified = self.classify_all()
+        counter = Counter(v["dominant_strategy"] for v in all_classified.values())
+        return [{"strategy": k, "count": v} for k, v in counter.most_common()]
 
-    # ─── Learning Update ────────────────────────────────────────
-
-    def update(self, new_state: tuple, reward: float):
-        """Standard Q-learning update rule."""
-        if self.last_state is not None:
-            old_q = self.q_table[self.last_state][self.last_action_idx]
-            max_next_q = np.max(self.q_table[new_state])
-            td_target = reward + self.gamma * max_next_q
-            self.q_table[self.last_state][self.last_action_idx] = (
-                old_q + self.lr * (td_target - old_q)
+    def resilience_ranking(self) -> List[Dict[str, Any]]:
+        """Rank states by a composite resilience score."""
+        results: list[dict[str, Any]] = []
+        for state in self.world.states:
+            info = self.classify_state(state)
+            scores = info["scores"]
+            # Composite: weighted welfare, GDP growth, trade success, low inequality
+            composite = (
+                scores["avg_welfare"] * 0.35
+                + min(scores["avg_gdp_growth"] / 15.0, 1.0) * 0.25
+                + scores["trade_execution_rate"] * 0.2
+                + (1.0 - scores["avg_inequality"]) * 0.2
             )
+            results.append({
+                "state": state,
+                "resilience_score": round(composite, 4),
+                "dominant_strategy": info["dominant_strategy"],
+                "tags": info["tags"],
+            })
+        results.sort(key=lambda x: x["resilience_score"], reverse=True)
+        return results
 
-        self.reward_history.append(reward)
-        self.total_reward += reward
-        self.epsilon = max(self.epsilon_end, self.epsilon * self.epsilon_decay)
-
-    # ─── Analysis Helpers ───────────────────────────────────────
-
-    def strategy_distribution(self, last_n: int = 50) -> Dict[str, float]:
-        """Fraction of each action in the last N steps."""
-        recent = self.action_history[-last_n:]
-        if not recent:
-            return {a: 1 / NUM_ACTIONS for a in ACTIONS}
-        counts = defaultdict(int)
-        for idx in recent:
-            counts[ACTIONS[idx]] += 1
-        return {a: counts.get(a, 0) / len(recent) for a in ACTIONS}
-
-    def dominant_strategy(self, last_n: int = 50) -> str:
-        dist = self.strategy_distribution(last_n)
-        return max(dist, key=dist.get)
-
-    def q_table_size(self) -> int:
-        return len(self.q_table)
-
-    def avg_reward(self, last_n: int = 50) -> float:
-        recent = self.reward_history[-last_n:]
-        return float(np.mean(recent)) if recent else 0.0
-
-
-# ════════════════════════════════════════════════════════════════
-# REWARD FUNCTION
-# ════════════════════════════════════════════════════════════════
-
-def compute_reward(
-    region,
-    prev_resources: Dict[str, float],
-    prev_population: float,
-    prev_happiness: float,
-) -> float:
-    """Multi-objective reward signal balancing survival, growth,
-    resource stability, and happiness."""
-    reward = 0.0
-
-    # ── Resource maintenance ────────────────────────────────
-    for res in ["water", "food", "energy", "land"]:
-        ratio = region.resource_ratio(res)
-        if ratio > 0.55:
-            reward += 1.5
-        elif ratio > 0.35:
-            reward += 0.5
-        elif ratio > 0.15:
-            reward -= 0.8
-        else:
-            reward -= 3.0  # critical penalty
-
-    # ── Resource improvement bonus ──────────────────────────
-    for res in ["water", "food", "energy", "land"]:
-        prev_ratio = prev_resources[res] / max(region.max_resources[res], 1)
-        curr_ratio = region.resource_ratio(res)
-        delta = curr_ratio - prev_ratio
-        reward += delta * 5.0  # reward improvement, penalise decline
-
-    # ── Population dynamics ─────────────────────────────────
-    pop_change = (region.population - prev_population) / max(prev_population, 1)
-    reward += pop_change * 12.0
-
-    # ── Happiness ───────────────────────────────────────────
-    reward += (region.happiness - prev_happiness) * 6.0
-    reward += region.happiness * 2.0
-
-    # ── Survival / collapse ─────────────────────────────────
-    if region.is_alive:
-        reward += 1.5
-    else:
-        reward -= 60.0
-
-    # ── Balance bonus (no single resource critically low) ───
-    min_ratio = min(region.resource_ratio(r) for r in ["water", "food", "energy", "land"])
-    reward += min_ratio * 4.0
-
-    # ── Technology bonus ────────────────────────────────────
-    reward += region.tech_level * 0.3
-
-    return float(reward)
-
-
-# ════════════════════════════════════════════════════════════════
-# AGENT MANAGER
-# ════════════════════════════════════════════════════════════════
-
-class AgentManager:
-    """Coordinates all Q-learning agents — one per region."""
-
-    def __init__(self, region_names: List[str], seed: int = 42):
-        random.seed(seed)
-        np.random.seed(seed)
-        self.agents: Dict[str, QLearningAgent] = {
-            name: QLearningAgent(name) for name in region_names
-        }
-
-    def get_decisions(self, world) -> Dict[str, dict]:
-        """Query every alive agent for its action this cycle."""
-        decisions = {}
-        for name, agent in self.agents.items():
-            region = world.regions[name]
-            if region.is_alive:
-                state = region.get_state_tuple()
-                decisions[name] = agent.get_action(state)
-            else:
-                decisions[name] = {"action": "none"}
-        return decisions
-
-    def snapshot_states(self, world) -> dict:
-        """Capture current region states for reward calculation."""
-        return {
-            name: {
-                "resources": dict(region.resources),
-                "population": region.population,
-                "happiness": region.happiness,
-            }
-            for name, region in world.regions.items()
-        }
-
-    def update_all(self, world, prev_snap: dict):
-        """Compute rewards and update Q-tables for all alive agents."""
-        for name, agent in self.agents.items():
-            region = world.regions[name]
-            prev = prev_snap[name]
-            if region.is_alive or region.collapse_cycle == world.cycle:
-                new_state = region.get_state_tuple()
-                reward = compute_reward(
-                    region,
-                    prev["resources"],
-                    prev["population"],
-                    prev["happiness"],
-                )
-                agent.update(new_state, reward)
-
-    def summary(self) -> Dict[str, dict]:
-        """Summary statistics for each agent."""
-        return {
-            name: {
-                "total_reward": round(agent.total_reward, 1),
-                "avg_reward_50": round(agent.avg_reward(50), 2),
-                "dominant_strategy": agent.dominant_strategy(),
-                "epsilon": round(agent.epsilon, 4),
-                "q_table_states": agent.q_table_size(),
-                "states_visited": len(agent.states_visited),
-            }
-            for name, agent in self.agents.items()
-        }
+    def summary(self) -> Dict[str, Dict[str, Any]]:
+        """Return per-state strategy info (backwards-compatible API)."""
+        return self.classify_all()
