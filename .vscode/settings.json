@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "pip": true,
+        "summary[\\\"total_population\\\"]:.0f": true,
+        "summary[\\\"total_trades\\\"]": true,
+        "summary[\\\"total_events\\\"]": true
+    }
+}
