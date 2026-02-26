@@ -1,5 +1,8 @@
 # 🌍 WorldSim — Adaptive Resource Scarcity & Agent Strategy Simulator
-<img width="2737" height="1410" alt="image" src="https://github.com/user-attachments/assets/e8308afd-1b1a-4b36-82f9-acb639f9e5ad" />
+<img width="1911" height="908" alt="image" src="https://github.com/user-attachments/assets/7e7fa1e8-bd67-4ef5-8b15-ccb1619386e5" />
+
+<img width="1887" height="736" alt="image" src="https://github.com/user-attachments/assets/a2037142-7069-40c9-abcb-47c106c58a9c" />
+
 
 > **A multi-agent reinforcement learning simulation of regional resource dynamics, inter-region negotiation, and emergent survival strategies.**
 
