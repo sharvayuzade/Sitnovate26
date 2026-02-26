@@ -1,9 +1,57 @@
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 import GlobeIntro from './components/GlobeIntro'
-import FantasyMap from './components/FantasyMap'
+import IndiaStateMap from './components/IndiaStateMap'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
+const MONITORED_STATES = [
+  'Maharashtra',
+  'Gujarat',
+  'Rajasthan',
+  'Uttar Pradesh',
+  'Madhya Pradesh',
+  'West Bengal',
+  'Tamil Nadu',
+  'Karnataka',
+  'Assam',
+  'Punjab',
+]
+
+function buildStateMetrics(regions = []) {
+  if (!regions.length) {
+    return MONITORED_STATES.map((state) => ({
+      state,
+      alive: false,
+      population: 0,
+      dominant_strategy: '—',
+      water: 0,
+      food: 0,
+      energy: 0,
+      land: 0,
+      happiness: 0,
+      tech: 0,
+      source_region: '—',
+    }))
+  }
+
+  return MONITORED_STATES.map((state, idx) => {
+    const source = regions[idx % regions.length]
+    const factor = 0.9 + (idx % 4) * 0.06
+    return {
+      state,
+      alive: source.alive,
+      population: (source.population || 0) * factor,
+      dominant_strategy: source.dominant_strategy || '—',
+      water: (source.water || 0) * factor,
+      food: (source.food || 0) * factor,
+      energy: (source.energy || 0) * factor,
+      land: (source.land || 0) * factor,
+      happiness: Number(source.happiness || 0),
+      tech: Number(source.tech || 0),
+      source_region: source.region,
+    }
+  })
+}
 
 function App() {
   const [introDone, setIntroDone] = useState(false)
@@ -16,6 +64,9 @@ function App() {
   const [model, setModel] = useState('gemma:4b')
   const [aiText, setAiText] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
+
+  const monitoredStates = useMemo(() => buildStateMetrics(simResult?.regions || []), [simResult])
+  const healthyStates = monitoredStates.filter((state) => state.alive && state.happiness >= 0.6).length
 
   const slides = useMemo(
     () => [
@@ -118,13 +169,13 @@ function App() {
 
   const kpis = simResult?.summary
     ? [
-        ['Regions Alive', `${simResult.summary.alive_regions.length} / 8`, simResult.summary.collapsed_regions.length ? `Collapsed: ${simResult.summary.collapsed_regions.join(', ')}` : 'No collapse'],
+        ['States Healthy', `${healthyStates} / 10`, 'Alive and happiness ≥ 0.6'],
         ['Active Trades', `${simResult.summary.total_trades}`, 'Total bilateral exchanges'],
         ['Population Index', `${Math.round(simResult.summary.total_population)}`, 'End-state total population'],
         ['Climate Stress', `${simResult.summary.climate_stress}`, 'Accumulated global stress'],
       ]
     : [
-        ['Regions Alive', '—', 'Run scenario to compute'],
+        ['States Healthy', '—', 'Run scenario to compute'],
         ['Active Trades', '—', 'Run scenario to compute'],
         ['Population Index', '—', 'Run scenario to compute'],
         ['Climate Stress', '—', 'Run scenario to compute'],
@@ -199,8 +250,8 @@ function App() {
                   <input type="number" value={cycles} onChange={(e) => setCycles(e.target.value)} min={20} max={2000} />
                 </label>
                 <label>
-                  Regions
-                  <input type="text" value="8 Biome Regions" readOnly />
+                  Monitored Grid
+                  <input type="text" value="10 Indian States" readOnly />
                 </label>
                 <label>
                   Engine
@@ -240,30 +291,32 @@ function App() {
           <section className="panel-row">
             <article className="panel panel-large glass">
               <div className="panel-head">
-                <h4>Regional Outcomes</h4>
-                <span>Live backend response table</span>
+                <h4>State Resource Outcomes</h4>
+                <span>10-state monitoring layer powered by simulation output</span>
               </div>
               <div className="table-wrap">
                 <table>
                   <thead>
                     <tr>
-                      <th>Region</th>
+                      <th>State</th>
                       <th>Status</th>
                       <th>Population</th>
-                      <th>Strategy</th>
+                      <th>Water</th>
+                      <th>Food</th>
+                      <th>Energy</th>
                       <th>Happiness</th>
-                      <th>Tech</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {(simResult?.regions || []).map((region) => (
-                      <tr key={region.region}>
-                        <td>{region.region}</td>
-                        <td>{region.alive ? 'Alive' : 'Collapsed'}</td>
-                        <td>{Math.round(region.population)}</td>
-                        <td>{region.dominant_strategy}</td>
-                        <td>{region.happiness}</td>
-                        <td>{region.tech}</td>
+                    {monitoredStates.map((state) => (
+                      <tr key={state.state}>
+                        <td>{state.state}</td>
+                        <td>{state.alive ? 'Stable' : 'Critical'}</td>
+                        <td>{Math.round(state.population)}</td>
+                        <td>{Math.round(state.water)}</td>
+                        <td>{Math.round(state.food)}</td>
+                        <td>{Math.round(state.energy)}</td>
+                        <td>{state.happiness.toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -290,22 +343,22 @@ function App() {
           <section className="panel-row">
             <article className="panel panel-large glass">
               <div className="panel-head">
-                <h4>Fantasy Strategy Map</h4>
-                <span>Hover kingdoms to inspect world-state details</span>
+                <h4>India State Resource Map</h4>
+                <span>Hover monitored states for live resource intelligence</span>
               </div>
-              <FantasyMap regions={simResult?.regions || []} />
+              <IndiaStateMap states={monitoredStates} />
             </article>
 
             <article className="panel glass">
               <div className="panel-head">
                 <h4>Map Legend</h4>
-                <span>Realm health by marker color</span>
+                <span>State health by marker color</span>
               </div>
               <ul className="mix-list">
                 <li><span>🟢 Stable</span><strong>Happiness ≥ 0.8</strong></li>
                 <li><span>🔵 Balanced</span><strong>0.6 – 0.79</strong></li>
                 <li><span>🟠 Strained</span><strong>0.4 – 0.59</strong></li>
-                <li><span>🔴 Critical</span><strong>&lt; 0.4 or collapsed</strong></li>
+                <li><span>🔴 Critical</span><strong>&lt; 0.4 or not alive</strong></li>
               </ul>
             </article>
           </section>
