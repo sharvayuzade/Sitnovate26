@@ -56,11 +56,18 @@ function createEarthTexture() {
 export default function GlobeIntro({ durationMs = 8500, onComplete }) {
   const mountRef = useRef(null)
   const [slideIndex, setSlideIndex] = useState(0)
+  const [progress, setProgress] = useState(0)
+  const startRef = useRef(Date.now())
 
   useEffect(() => {
     const slideTimer = setInterval(() => {
       setSlideIndex((prev) => (prev + 1) % SLIDES.length)
     }, 1700)
+
+    const progressTimer = setInterval(() => {
+      const elapsed = Date.now() - startRef.current
+      setProgress(Math.min((elapsed / durationMs) * 100, 100))
+    }, 50)
 
     const completeTimer = setTimeout(() => {
       if (onComplete) onComplete()
@@ -68,6 +75,7 @@ export default function GlobeIntro({ durationMs = 8500, onComplete }) {
 
     return () => {
       clearInterval(slideTimer)
+      clearInterval(progressTimer)
       clearTimeout(completeTimer)
     }
   }, [durationMs, onComplete])
@@ -201,8 +209,9 @@ export default function GlobeIntro({ durationMs = 8500, onComplete }) {
       <div className="intro-copy">
         <p className="intro-tag">WorldSim</p>
         <h1>Planetary Strategy Intelligence</h1>
-        <p className="intro-slide">{SLIDES[slideIndex]}</p>
+        <p className="intro-slide" key={slideIndex}>{SLIDES[slideIndex]}</p>
       </div>
+      <div className="intro-progress" style={{ width: `${progress}%` }} />
       <button className="intro-skip" type="button" onClick={onComplete}>
         Skip intro
       </button>

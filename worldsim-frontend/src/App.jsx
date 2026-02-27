@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import GlobeIntro from './components/GlobeIntro'
 import IndiaStateMap from './components/IndiaStateMap'
@@ -11,6 +11,32 @@ import {
 } from './components/Charts'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
+
+/* ── Scroll-reveal hook (IntersectionObserver) ── */
+function useReveal(threshold = 0.12) {
+  const ref = useRef(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { el.classList.add('visible'); io.unobserve(el) } },
+      { threshold },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [threshold])
+  return ref
+}
+
+function RevealSection({ children, className = '', delay = 0, ...props }) {
+  const ref = useReveal()
+  return (
+    <section ref={ref} className={`reveal ${className}`}
+      style={{ transitionDelay: `${delay}s` }} {...props}>
+      {children}
+    </section>
+  )
+}
 
 function App() {
   const [introDone, setIntroDone] = useState(false)
@@ -26,6 +52,7 @@ function App() {
   const [aiLoading, setAiLoading] = useState(false)
   const [ollamaStatus, setOllamaStatus] = useState({ ok: false, models: [], error: '' })
   const [ollamaLoading, setOllamaLoading] = useState(false)
+  const [slideKey, setSlideKey] = useState(0)
 
   const monitoredStates = useMemo(() => simResult?.states || [], [simResult])
   const healthyCount = simResult?.summary?.healthy_states?.length || 0
@@ -57,7 +84,10 @@ function App() {
 
   useEffect(() => {
     if (!introDone) return
-    const id = setInterval(() => setActiveSlide((p) => (p + 1) % slides.length), 3600)
+    const id = setInterval(() => {
+      setActiveSlide((p) => (p + 1) % slides.length)
+      setSlideKey((k) => k + 1)
+    }, 4200)
     return () => clearInterval(id)
   }, [introDone, slides.length])
 
@@ -185,39 +215,41 @@ function App() {
             <button className="btn btn-outline" type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
               Command Center
             </button>
-            <button className="btn btn-primary" onClick={runSimulation} disabled={loading}>
+            <button className={`btn btn-primary ${loading ? 'btn-loading' : ''}`} onClick={runSimulation} disabled={loading}>
               {loading ? 'Analyzing...' : 'Run Analysis'}
             </button>
           </div>
         </header>
 
         <main className="layout">
-          <section className="hero glass">
+          {/* Hero slideshow with crossfade key */}
+          <RevealSection className="hero glass" delay={0}>
             <div className="hero-content">
               <p className="eyebrow">Dataset-Driven Intelligence Dashboard</p>
-              <h2>{slides[activeSlide].title}</h2>
-              <p>{slides[activeSlide].subtitle}</p>
+              <h2 key={`title-${slideKey}`}>{slides[activeSlide].title}</h2>
+              <p key={`sub-${slideKey}`}>{slides[activeSlide].subtitle}</p>
               <div className="slide-dots">
                 {slides.map((slide, idx) => (
                   <button key={slide.title} className={`dot ${idx === activeSlide ? 'active' : ''}`}
-                    onClick={() => setActiveSlide(idx)} aria-label={`Slide ${idx + 1}`} />
+                    onClick={() => { setActiveSlide(idx); setSlideKey((k) => k + 1) }} aria-label={`Slide ${idx + 1}`} />
                 ))}
               </div>
             </div>
+          </RevealSection>
 
-          </section>
-
-          <section className="kpi-grid">
-            {kpis.map(([label, value, meta]) => (
-              <article className="kpi glass" key={label}>
+          {/* Staggered KPIs */}
+          <RevealSection className="kpi-grid" delay={0.08}>
+            {kpis.map(([label, value, meta], i) => (
+              <article className={`kpi glass stagger-${i + 1}`} key={label}
+                style={{ animationDelay: `${0.12 + i * 0.08}s` }}>
                 <p>{label}</p>
                 <h3>{value}</h3>
                 <span>{meta}</span>
               </article>
             ))}
-          </section>
+          </RevealSection>
 
-          <section className="panel-row">
+          <RevealSection className="panel-row" delay={0.12}>
             <article className="panel panel-large glass">
               <div className="panel-head">
                 <h4>Dataset Analysis Control</h4>
@@ -242,7 +274,7 @@ function App() {
                 </label>
               </div>
               <div className="control-actions">
-                <button className="btn btn-primary" onClick={runSimulation} disabled={loading}>
+                <button className={`btn btn-primary ${loading ? 'btn-loading' : ''}`} onClick={runSimulation} disabled={loading}>
                   {loading ? 'Analyzing...' : 'Launch Analysis'}
                 </button>
                 <button className="btn btn-outline" onClick={exportReport} disabled={!simResult}>
@@ -279,21 +311,25 @@ function App() {
                 <p className="error-text" style={{ marginTop: '0.6rem' }}>{ollamaStatus.error}</p>
               )}
               <p className="ai-summary">
-                {aiText || 'Generate a strategic briefing from your local Ollama model after running analysis.'}
+                {aiLoading ? (
+                  <span className="shimmer shimmer-text" style={{ display: 'block', width: '80%' }} />
+                ) : (
+                  aiText || 'Generate a strategic briefing from your local Ollama model after running analysis.'
+                )}
               </p>
               <div className="control-actions" style={{ marginTop: '0.6rem' }}>
                 <button className="btn btn-outline" onClick={refreshOllamaStatus} disabled={ollamaLoading}>
                   {ollamaLoading ? 'Checking...' : 'Refresh Ollama'}
                 </button>
-                <button className="btn btn-primary" onClick={generateInsight} disabled={aiLoading || !simResult || !ollamaStatus.ok}>
-                {aiLoading ? 'Generating...' : 'Generate Insight'}
+                <button className={`btn btn-primary ${aiLoading ? 'btn-loading' : ''}`} onClick={generateInsight} disabled={aiLoading || !simResult || !ollamaStatus.ok}>
+                  {aiLoading ? 'Generating...' : 'Generate Insight'}
                 </button>
               </div>
             </article>
-          </section>
+          </RevealSection>
 
           {/* === State Metrics Table === */}
-          <section className="panel-row">
+          <RevealSection className="panel-row" delay={0.06}>
             <article className="panel panel-large glass">
               <div className="panel-head">
                 <h4>State Economic &amp; Resource Dashboard</h4>
@@ -370,12 +406,11 @@ function App() {
                 </>
               )}
             </article>
-          </section>
+          </RevealSection>
 
           {/* === CHARTS SECTION === */}
 
-          {/* GDP Charts */}
-          <section className="panel-row">
+          <RevealSection className="panel-row" delay={0.06}>
             <article className="panel panel-large glass chart-panel">
               <div className="panel-head">
                 <h4>GDP Share by State</h4>
@@ -390,10 +425,9 @@ function App() {
               </div>
               <GdpLineChart stateSeries={stateSeries} stateNames={stateNames} />
             </article>
-          </section>
+          </RevealSection>
 
-          {/* Resource Consumption Charts */}
-          <section className="panel-row">
+          <RevealSection className="panel-row" delay={0.06}>
             <article className="panel panel-large glass chart-panel">
               <div className="panel-head">
                 <h4>Resource Consumption by State</h4>
@@ -408,10 +442,9 @@ function App() {
               </div>
               <ResourceGenVsConChart resourceConsumption={resourceConsumption} />
             </article>
-          </section>
+          </RevealSection>
 
-          {/* Bid vs Ask Negotiations */}
-          <section className="panel-row">
+          <RevealSection className="panel-row" delay={0.06}>
             <article className="panel panel-large glass chart-panel">
               <div className="panel-head">
                 <h4>Bid vs Ask Negotiations Over Time</h4>
@@ -426,10 +459,9 @@ function App() {
               </div>
               <BidAskStateChart bidAskByState={bidAskByState} />
             </article>
-          </section>
+          </RevealSection>
 
-          {/* Welfare Trend */}
-          <section className="panel-row">
+          <RevealSection className="panel-row" delay={0.06}>
             <article className="panel panel-large glass chart-panel">
               <div className="panel-head">
                 <h4>Welfare Index Trend</h4>
@@ -444,10 +476,9 @@ function App() {
               </div>
               <PopulationTrendChart stateSeries={stateSeries} stateNames={stateNames} />
             </article>
-          </section>
+          </RevealSection>
 
-          {/* Trade Volume + Climate & Trade Analytics */}
-          <section className="panel-row">
+          <RevealSection className="panel-row" delay={0.06}>
             <article className="panel panel-large glass chart-panel">
               <div className="panel-head">
                 <h4>Trade Execution by State</h4>
@@ -471,9 +502,9 @@ function App() {
                   : <li><span>Run analysis to see climate data</span></li>}
               </ul>
             </article>
-          </section>
+          </RevealSection>
 
-          <section className="panel-row">
+          <RevealSection className="panel-row" delay={0.06}>
             <article className="panel glass">
               <div className="panel-head">
                 <h4>Trade Analytics</h4>
@@ -490,10 +521,10 @@ function App() {
                   : <li><span>Run analysis to see trade data</span></li>}
               </ul>
             </article>
-          </section>
+          </RevealSection>
 
           {/* === India Map === */}
-          <section className="panel-row">
+          <RevealSection className="panel-row" delay={0.08}>
             <article className="panel panel-large glass">
               <div className="panel-head">
                 <h4>India State Resource Map</h4>
@@ -520,7 +551,7 @@ function App() {
                 </div>
               )}
             </article>
-          </section>
+          </RevealSection>
 
           <section className="footer-note glass">
             <p>
