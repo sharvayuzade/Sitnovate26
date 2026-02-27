@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Animated, Dimensions, ActivityIndicator, TextInput, Platform,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { COLORS, API_BASE } from './src/config';
+import Svg, { Path, Circle, Text as SvgText, G } from 'react-native-svg';
+import { geoMercator, geoPath } from 'd3-geo';
 
 const { width } = Dimensions.get('window');
 
@@ -41,6 +43,39 @@ const MOCK_SIMULATION_DATA = {
     { state: 'Bihar', grade: 'D', resilience_score: 64.6, welfare_index: 62.1, avg_gdp_growth: 5.8, trade_efficiency: 0.65, strategy: 'Balanced Growth', net_migration: -12000, inequality_index: 0.41 },
   ],
 };
+
+const INDIA_GEO_URL =
+  'https://gist.githubusercontent.com/jbrobst/56c13bbbf9d97d187fea01ca62ea5112/raw/e388c4cae20aa53cb5090210a42ebb9b765c0a36/india_states.geojson';
+
+const TRACKED_STATES = new Set([
+  'Rajasthan',
+  'Gujarat',
+  'Uttar Pradesh',
+  'Maharashtra',
+  'West Bengal',
+  'Bihar',
+  'Karnataka',
+  'Tamil Nadu',
+  'Telangana',
+  'Delhi',
+]);
+
+function geoNameToDataset(geoName) {
+  const map = {
+    Rajasthan: 'Rajasthan',
+    Gujarat: 'Gujarat',
+    'Uttar Pradesh': 'Uttar Pradesh',
+    Maharashtra: 'Maharashtra',
+    'West Bengal': 'West Bengal',
+    Bihar: 'Bihar',
+    Karnataka: 'Karnataka',
+    'Tamil Nadu': 'Tamil Nadu',
+    Telangana: 'Telangana',
+    Delhi: 'Delhi',
+    'NCT of Delhi': 'Delhi',
+  };
+  return map[geoName] || null;
+}
 
 /* ───────────────────── SPLASH SCREEN ───────────────────── */
 function SplashView({ onDone }) {
@@ -129,6 +164,8 @@ function DashboardTab({ apiBase, onSimulationData }) {
         </View>
       </View>
 
+      <IndiaMiniMap states={data?.states} />
+
       <View style={s.card}>
         <Text style={s.cardLabel}>Seed</Text>
         <TextInput style={s.input} value={seed} onChangeText={setSeed} keyboardType="numeric" placeholderTextColor={COLORS.textMuted} />
@@ -212,6 +249,135 @@ function KPI({ label, value, icon }) {
       <Text style={{ fontSize: 24, marginBottom: 4 }}>{icon}</Text>
       <Text style={s.kpiValue}>{value}</Text>
       <Text style={s.kpiLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function IndiaMiniMap({ states }) {
+  const mapStates = states?.length ? states : MOCK_SIMULATION_DATA.states;
+  const [geoData, setGeoData] = useState(null);
+  const [hoveredStateName, setHoveredStateName] = useState('');
+
+  useEffect(() => {
+    let ignore = false;
+    fetch(INDIA_GEO_URL)
+      .then((response) => response.json())
+      .then((json) => {
+        if (!ignore) setGeoData(json);
+      })
+      .catch(() => {
+        if (!ignore) setGeoData(null);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  const stateMap = useMemo(() => {
+    const mapped = {};
+    for (const state of mapStates) {
+      mapped[state.state] = state;
+    }
+    return mapped;
+  }, [mapStates]);
+
+  const geoShapes = useMemo(() => {
+    if (!geoData?.features?.length) return [];
+    const projection = geoMercator();
+    projection.fitSize([320, 330], geoData);
+    const pathBuilder = geoPath(projection);
+
+    return geoData.features
+      .map((feature) => {
+        const geoName = feature?.properties?.ST_NM || feature?.properties?.st_nm || '';
+        const datasetName = geoNameToDataset(geoName);
+        const stateData = datasetName ? stateMap[datasetName] : null;
+        const isTracked = datasetName ? TRACKED_STATES.has(datasetName) : false;
+        const path = pathBuilder(feature);
+        if (!path) return null;
+        return {
+          key: `${geoName}-${feature?.id || ''}`,
+          path,
+          geoName,
+          stateData,
+          isTracked,
+          centroid: pathBuilder.centroid(feature),
+        };
+      })
+      .filter(Boolean);
+  }, [geoData, stateMap]);
+
+  const hoveredState = hoveredStateName ? stateMap[hoveredStateName] : null;
+
+  return (
+    <View style={s.mapCard}>
+      <View style={s.mapHeaderRow}>
+        <Text style={s.cardLabel}>India Agent Map</Text>
+        <Text style={s.mapHint}>Web-style state boundaries</Text>
+      </View>
+
+      <View style={s.mapWrap}>
+        {!geoShapes.length ? (
+          <View style={{ paddingVertical: 18, alignItems: 'center' }}>
+            <Text style={s.mapHint}>Loading map geometry…</Text>
+          </View>
+        ) : (
+          <Svg width="100%" height="230" viewBox="0 0 320 330">
+            {geoShapes.map((shape) => {
+              const wRaw = shape.stateData?.welfare_index ?? 0;
+              const welfare = wRaw > 1 ? wRaw / 100 : wRaw;
+              let fill = 'rgba(100,116,139,0.12)';
+              if (shape.stateData) {
+                if (welfare >= 0.8) fill = '#76b900';
+                else if (welfare >= 0.6) fill = '#00d4aa';
+                else if (welfare >= 0.4) fill = '#facc15';
+                else fill = '#f97316';
+              }
+
+              return (
+                <Path
+                  key={shape.key}
+                  d={shape.path}
+                  fill={fill}
+                  stroke={shape.isTracked ? 'rgba(148,163,184,0.55)' : 'rgba(148,163,184,0.2)'}
+                  strokeWidth={shape.isTracked ? 0.7 : 0.4}
+                  onPress={() => {
+                    const name = geoNameToDataset(shape.geoName);
+                    if (name) setHoveredStateName(name);
+                  }}
+                />
+              );
+            })}
+
+            {geoShapes
+              .filter((shape) => shape.stateData)
+              .map((shape) => (
+                <G key={`${shape.key}-label`}>
+                  <Circle cx={shape.centroid[0]} cy={shape.centroid[1]} r="2.4" fill="#0a0a0a" opacity="0.75" />
+                  <SvgText x={shape.centroid[0] + 4} y={shape.centroid[1] + 3} fill="#d4d4d4" fontSize="6.4" fontWeight="700">
+                    {shape.stateData.state}
+                  </SvgText>
+                </G>
+              ))}
+          </Svg>
+        )}
+
+        {!!hoveredState && (
+          <View style={s.mapHoverCard}>
+            <Text style={s.mapHoverTitle}>{hoveredState.state}</Text>
+            <Text style={s.mapHoverText}>Welfare: {(hoveredState.welfare_index ?? 0).toFixed(2)}</Text>
+            <Text style={s.mapHoverText}>GDP Growth: {(hoveredState.avg_gdp_growth ?? 0).toFixed(1)}%</Text>
+            <Text style={s.mapHoverText}>Strategy: {hoveredState.strategy || '—'}</Text>
+          </View>
+        )}
+      </View>
+
+      <View style={s.mapLegendRow}>
+        <View style={s.legendItem}><View style={[s.legendDot, { backgroundColor: '#76b900' }]} /><Text style={s.legendText}>≥ 0.8</Text></View>
+        <View style={s.legendItem}><View style={[s.legendDot, { backgroundColor: '#00d4aa' }]} /><Text style={s.legendText}>≥ 0.6</Text></View>
+        <View style={s.legendItem}><View style={[s.legendDot, { backgroundColor: '#facc15' }]} /><Text style={s.legendText}>≥ 0.4</Text></View>
+        <View style={s.legendItem}><View style={[s.legendDot, { backgroundColor: '#f97316' }]} /><Text style={s.legendText}>{'< 0.4'}</Text></View>
+      </View>
     </View>
   );
 }
@@ -539,6 +705,19 @@ const s = StyleSheet.create({
   heroStatPill: { flex: 1, backgroundColor: COLORS.card, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 6, alignItems: 'center' },
   heroStatLabel: { color: COLORS.textMuted, fontSize: 10, fontWeight: '700' },
   heroStatValue: { color: COLORS.accent, fontSize: 15, fontWeight: '800', marginTop: 2 },
+
+  /* India Map */
+  mapCard: { backgroundColor: COLORS.surface, borderRadius: 14, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: COLORS.cardBorder },
+  mapHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  mapHint: { color: COLORS.textMuted, fontSize: 11, fontWeight: '600' },
+  mapWrap: { backgroundColor: COLORS.card, borderRadius: 12, borderWidth: 1, borderColor: COLORS.cardBorder, paddingTop: 6, paddingHorizontal: 4, paddingBottom: 8 },
+  mapLegendRow: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 10 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot: { width: 8, height: 8, borderRadius: 4 },
+  legendText: { color: COLORS.textSecondary, fontSize: 11, fontWeight: '700' },
+  mapHoverCard: { marginTop: 6, backgroundColor: 'rgba(10,10,10,0.7)', borderWidth: 1, borderColor: COLORS.cardBorder, borderRadius: 8, padding: 8 },
+  mapHoverTitle: { color: COLORS.accent, fontSize: 12, fontWeight: '800', marginBottom: 2 },
+  mapHoverText: { color: COLORS.textSecondary, fontSize: 11, lineHeight: 16 },
 
   /* Card */
   card: { backgroundColor: COLORS.card, borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: COLORS.cardBorder },
