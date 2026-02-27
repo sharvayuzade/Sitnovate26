@@ -9,7 +9,7 @@
  * 6. Trade Volume      – Bar chart (trade volume per state)
  */
 
-import { useMemo } from 'react'
+import { useMemo, Component } from 'react'
 import {
   ResponsiveContainer,
   PieChart, Pie, Cell, Tooltip, Legend,
@@ -19,27 +19,52 @@ import {
   ComposedChart,
 } from 'recharts'
 
-/* ---- palette (professional muted) ---- */
+/* ---- Error Boundary for individual chart panels ---- */
+class ChartErrorBoundary extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false, errorMsg: '' }
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, errorMsg: error?.message || 'Unknown chart error' }
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <p className="chart-empty" style={{ color: '#f87171' }}>
+          Chart render error: {this.state.errorMsg}
+        </p>
+      )
+    }
+    return this.props.children
+  }
+}
+
+/* ---- palette (NVIDIA green spectrum) ---- */
 const STATE_COLORS = [
-  '#3b82f6', '#6366f1', '#8b5cf6', '#0ea5e9', '#14b8a6',
-  '#f59e0b', '#ef4444', '#10b981', '#ec4899', '#64748b',
+  '#76b900', '#00d4aa', '#4ade80', '#22d3ee', '#a3e635',
+  '#facc15', '#f97316', '#34d399', '#06b6d4', '#94a3b8',
 ]
 
-const RESOURCE_COLORS = { water: '#0ea5e9', food: '#10b981', energy: '#f59e0b' }
+const RESOURCE_COLORS = { water: '#22d3ee', food: '#4ade80', energy: '#facc15' }
 
 /* small custom tooltip wrapper */
 const GlassTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null
-  return (
-    <div className="chart-tooltip">
-      {label !== undefined && <p className="chart-tooltip-label">{label}</p>}
-      {payload.map((p, i) => (
-        <p key={i} style={{ color: p.color || '#f1f5f9', margin: 0, fontSize: '0.72rem' }}>
-          {p.name}: <strong>{typeof p.value === 'number' ? p.value.toLocaleString(undefined, { maximumFractionDigits: 2 }) : p.value}</strong>
-        </p>
-      ))}
-    </div>
-  )
+  try {
+    return (
+      <div className="chart-tooltip">
+        {label !== undefined && label !== null && <p className="chart-tooltip-label">{String(label)}</p>}
+        {payload.map((p, i) => (
+          <p key={i} style={{ color: p.color || '#f1f5f9', margin: 0, fontSize: '0.72rem' }}>
+            {p.name ?? 'Value'}: <strong>{typeof p.value === 'number' ? p.value.toLocaleString(undefined, { maximumFractionDigits: 2 }) : String(p.value ?? '—')}</strong>
+          </p>
+        ))}
+      </div>
+    )
+  } catch {
+    return null
+  }
 }
 
 /* ====================================================================
@@ -56,6 +81,7 @@ export function GdpPieChart({ states = [] }) {
   if (!data.length) return <p className="chart-empty">Run analysis to see GDP share</p>
 
   return (
+    <ChartErrorBoundary>
     <ResponsiveContainer width="100%" height={320}>
       <PieChart>
         <Pie
@@ -81,6 +107,7 @@ export function GdpPieChart({ states = [] }) {
         />
       </PieChart>
     </ResponsiveContainer>
+    </ChartErrorBoundary>
   )
 }
 
@@ -104,6 +131,7 @@ export function GdpLineChart({ stateSeries = {}, stateNames = [] }) {
   if (!data.length) return <p className="chart-empty">Run analysis to see GDP trend</p>
 
   return (
+    <ChartErrorBoundary>
     <ResponsiveContainer width="100%" height={320}>
       <LineChart data={data}>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" />
@@ -124,6 +152,7 @@ export function GdpLineChart({ stateSeries = {}, stateNames = [] }) {
         ))}
       </LineChart>
     </ResponsiveContainer>
+    </ChartErrorBoundary>
   )
 }
 
@@ -134,6 +163,7 @@ export function ResourceBarChart({ resourceConsumption = [] }) {
   if (!resourceConsumption.length) return <p className="chart-empty">Run analysis to see resource data</p>
 
   return (
+    <ChartErrorBoundary>
     <ResponsiveContainer width="100%" height={340}>
       <BarChart data={resourceConsumption} barCategoryGap="18%">
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" />
@@ -146,6 +176,7 @@ export function ResourceBarChart({ resourceConsumption = [] }) {
         <Bar dataKey="energy_consumed" name="Energy" fill={RESOURCE_COLORS.energy} radius={[3, 3, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
+    </ChartErrorBoundary>
   )
 }
 
@@ -169,6 +200,7 @@ export function ResourceGenVsConChart({ resourceConsumption = [] }) {
   if (!data.length) return <p className="chart-empty">Run analysis to see resource gen vs consumption</p>
 
   return (
+    <ChartErrorBoundary>
     <ResponsiveContainer width="100%" height={340}>
       <BarChart data={data} barCategoryGap="12%">
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" />
@@ -184,6 +216,7 @@ export function ResourceGenVsConChart({ resourceConsumption = [] }) {
         <Bar dataKey="Energy Con" fill="#a16207" radius={[3, 3, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
+    </ChartErrorBoundary>
   )
 }
 
@@ -194,6 +227,7 @@ export function BidAskChart({ bidAskOverTime = [] }) {
   if (!bidAskOverTime.length) return <p className="chart-empty">Run analysis to see bid/ask data</p>
 
   return (
+    <ChartErrorBoundary>
     <ResponsiveContainer width="100%" height={320}>
       <ComposedChart data={bidAskOverTime}>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" />
@@ -208,6 +242,7 @@ export function BidAskChart({ bidAskOverTime = [] }) {
         <Line yAxisId="price" type="monotone" dataKey="avg_ask_price" name="Avg Ask Price" stroke="#f59e0b" strokeWidth={1.5} dot={false} />
       </ComposedChart>
     </ResponsiveContainer>
+    </ChartErrorBoundary>
   )
 }
 
@@ -219,14 +254,15 @@ export function BidAskStateChart({ bidAskByState = {} }) {
     () =>
       Object.entries(bidAskByState).map(([state, counts]) => ({
         state,
-        Bids: counts.bid || 0,
-        Asks: counts.ask || 0,
+        Bids: counts?.bid || 0,
+        Asks: counts?.ask || 0,
       })),
     [bidAskByState],
   )
   if (!data.length) return <p className="chart-empty">Run analysis to see bid/ask per state</p>
 
   return (
+    <ChartErrorBoundary>
     <ResponsiveContainer width="100%" height={320}>
       <BarChart data={data} layout="vertical" barCategoryGap="16%">
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" />
@@ -238,6 +274,7 @@ export function BidAskStateChart({ bidAskByState = {} }) {
         <Bar dataKey="Asks" fill="#ef4444" radius={[0, 3, 3, 0]} />
       </BarChart>
     </ResponsiveContainer>
+    </ChartErrorBoundary>
   )
 }
 
@@ -261,6 +298,7 @@ export function WelfareTrendChart({ stateSeries = {}, stateNames = [] }) {
   if (!data.length) return <p className="chart-empty">Run analysis to see welfare trend</p>
 
   return (
+    <ChartErrorBoundary>
     <ResponsiveContainer width="100%" height={320}>
       <LineChart data={data}>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" />
@@ -281,6 +319,7 @@ export function WelfareTrendChart({ stateSeries = {}, stateNames = [] }) {
         ))}
       </LineChart>
     </ResponsiveContainer>
+    </ChartErrorBoundary>
   )
 }
 
@@ -304,6 +343,7 @@ export function PopulationTrendChart({ stateSeries = {}, stateNames = [] }) {
   if (!data.length) return <p className="chart-empty">Run analysis to see population trend</p>
 
   return (
+    <ChartErrorBoundary>
     <ResponsiveContainer width="100%" height={320}>
       <AreaChart data={data}>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" />
@@ -324,6 +364,7 @@ export function PopulationTrendChart({ stateSeries = {}, stateNames = [] }) {
         ))}
       </AreaChart>
     </ResponsiveContainer>
+    </ChartErrorBoundary>
   )
 }
 
@@ -346,6 +387,7 @@ export function TradeVolumeChart({ states = [] }) {
   if (!data.length) return <p className="chart-empty">Run analysis to see trade volume</p>
 
   return (
+    <ChartErrorBoundary>
     <ResponsiveContainer width="100%" height={320}>
       <BarChart data={data} barCategoryGap="18%">
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" />
@@ -357,5 +399,6 @@ export function TradeVolumeChart({ states = [] }) {
         <Bar dataKey="pending" name="Pending Orders" fill="#f87171" radius={[3, 3, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
+    </ChartErrorBoundary>
   )
 }

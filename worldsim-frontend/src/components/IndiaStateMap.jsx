@@ -41,13 +41,13 @@ function geoNameToDataset(geoName) {
 }
 
 function stateColor(state) {
-  if (!state) return 'rgba(100,116,139,0.18)' /* untracked — dim */
+  if (!state) return 'rgba(100,116,139,0.12)' /* untracked — dim */
   if (!state.alive) return '#dc2626'
   const w = state.welfare_index ?? 0
-  if (w >= 0.8) return '#22c55e'
-  if (w >= 0.6) return '#3b82f6'
-  if (w >= 0.4) return '#f59e0b'
-  return '#f97316'
+  if (w >= 0.8) return '#76b900'  /* NVIDIA green — prosperous */
+  if (w >= 0.6) return '#00d4aa'  /* teal — stable */
+  if (w >= 0.4) return '#facc15'  /* amber — strained */
+  return '#f97316'               /* orange — critical */
 }
 
 const MemoGeography = memo(function MemoGeo({
@@ -74,7 +74,7 @@ const MemoGeography = memo(function MemoGeo({
           fill: dataState
             ? stateColor(dataState)
             : 'rgba(100,116,139,0.35)',
-          stroke: '#e0f2fe',
+          stroke: 'rgba(118,185,0,0.25)',
           strokeWidth: 1.1,
           outline: 'none',
           cursor: dataState ? 'pointer' : 'default',
@@ -82,7 +82,7 @@ const MemoGeography = memo(function MemoGeo({
         },
         pressed: {
           fill: stateColor(dataState),
-          stroke: '#e0f2fe',
+          stroke: 'rgba(118,185,0,0.35)',
           strokeWidth: 1.1,
           outline: 'none',
         },
@@ -157,9 +157,9 @@ export default function IndiaStateMap({ states = [] }) {
 
       {/* Legend */}
       <div className="india-legend">
-        <span><i style={{ background: '#22c55e' }} /> Welfare ≥ 0.8</span>
-        <span><i style={{ background: '#3b82f6' }} /> ≥ 0.6</span>
-        <span><i style={{ background: '#f59e0b' }} /> ≥ 0.4</span>
+        <span><i style={{ background: '#76b900' }} /> Welfare ≥ 0.8</span>
+        <span><i style={{ background: '#00d4aa' }} /> ≥ 0.6</span>
+        <span><i style={{ background: '#facc15' }} /> ≥ 0.4</span>
         <span><i style={{ background: '#f97316' }} /> &lt; 0.4</span>
         <span><i style={{ background: '#dc2626' }} /> Critical</span>
       </div>
@@ -173,8 +173,8 @@ export default function IndiaStateMap({ states = [] }) {
               <span
                 className="hover-badge"
                 style={{
-                  background: hoveredState.alive ? '#22c55e22' : '#dc262622',
-                  color: hoveredState.alive ? '#86efac' : '#fca5a5',
+                  background: hoveredState.alive ? 'rgba(118,185,0,0.12)' : '#dc262622',
+                  color: hoveredState.alive ? '#a3e635' : '#fca5a5',
                 }}
               >
                 {hoveredState.alive ? 'Stable' : 'Critical'}

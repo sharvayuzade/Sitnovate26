@@ -42,40 +42,97 @@ CLIMATE_EVENTS = ["None", "Heatwave", "Drought", "Flood", "Cyclone"]
 # Core data loader
 # ---------------------------------------------------------------------------
 
+REQUIRED_COLUMNS = {
+    "tick", "state", "population", "water_supply", "food_supply",
+    "energy_supply", "water_generated", "food_generated", "energy_generated",
+    "water_consumed", "food_consumed", "energy_consumed", "state_gdp",
+    "gdp_growth_rate", "welfare_index", "inequality_index", "migration_in",
+    "migration_out", "order_type", "resource_type", "trade_quantity",
+    "trade_price", "trade_executed", "climate_event", "shock_intensity",
+}
+
+
+def _safe_float(val: Any, default: float = 0.0) -> float:
+    """Convert to float, returning *default* on failure."""
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return default
+
+
+def _safe_int(val: Any, default: int = 0) -> int:
+    """Convert to int (via float to handle '3.0'), returning *default* on failure."""
+    try:
+        return int(float(val))
+    except (ValueError, TypeError):
+        return default
+
+
 def load_dataset(path=DEFAULT_CSV):
-    """Load the CSV dataset and parse numeric fields."""
+    """Load the CSV dataset and parse numeric fields.
+
+    Raises
+    ------
+    FileNotFoundError  – if the CSV file does not exist.
+    ValueError         – if the CSV is empty or missing required columns.
+    """
+    csv_path = Path(path)
+    if not csv_path.exists():
+        raise FileNotFoundError(f"Dataset not found: {csv_path}")
+
     rows: list[dict[str, Any]] = []
-    with open(path, "r", encoding="utf-8") as fh:
+    with open(csv_path, "r", encoding="utf-8") as fh:
         reader = csv.DictReader(fh)
-        for raw in reader:
-            row: dict[str, Any] = {
-                "tick": int(raw["tick"]),
-                "state": raw["state"],
-                "population": float(raw["population"]),
-                "water_supply": float(raw["water_supply"]),
-                "food_supply": float(raw["food_supply"]),
-                "energy_supply": float(raw["energy_supply"]),
-                "water_generated": float(raw["water_generated"]),
-                "food_generated": float(raw["food_generated"]),
-                "energy_generated": float(raw["energy_generated"]),
-                "water_consumed": float(raw["water_consumed"]),
-                "food_consumed": float(raw["food_consumed"]),
-                "energy_consumed": float(raw["energy_consumed"]),
-                "state_gdp": float(raw["state_gdp"]),
-                "gdp_growth_rate": float(raw["gdp_growth_rate"]),
-                "welfare_index": float(raw["welfare_index"]),
-                "inequality_index": float(raw["inequality_index"]),
-                "migration_in": int(float(raw["migration_in"])),
-                "migration_out": int(float(raw["migration_out"])),
-                "order_type": raw["order_type"],
-                "resource_type": raw["resource_type"],
-                "trade_quantity": float(raw["trade_quantity"]),
-                "trade_price": float(raw["trade_price"]),
-                "trade_executed": int(raw["trade_executed"]),
-                "climate_event": raw["climate_event"],
-                "shock_intensity": float(raw["shock_intensity"]),
-            }
-            rows.append(row)
+
+        # Validate header presence
+        if reader.fieldnames is None:
+            raise ValueError("CSV file appears empty or has no header row.")
+
+        header_set = {h.strip() for h in reader.fieldnames if h}
+        missing = REQUIRED_COLUMNS - header_set
+        if missing:
+            raise ValueError(f"CSV missing required columns: {', '.join(sorted(missing))}")
+
+        for line_no, raw in enumerate(reader, start=2):  # line 1 = header
+            try:
+                row: dict[str, Any] = {
+                    "tick": _safe_int(raw.get("tick"), 0),
+                    "state": str(raw.get("state", "")).strip(),
+                    "population": _safe_float(raw.get("population")),
+                    "water_supply": _safe_float(raw.get("water_supply")),
+                    "food_supply": _safe_float(raw.get("food_supply")),
+                    "energy_supply": _safe_float(raw.get("energy_supply")),
+                    "water_generated": _safe_float(raw.get("water_generated")),
+                    "food_generated": _safe_float(raw.get("food_generated")),
+                    "energy_generated": _safe_float(raw.get("energy_generated")),
+                    "water_consumed": _safe_float(raw.get("water_consumed")),
+                    "food_consumed": _safe_float(raw.get("food_consumed")),
+                    "energy_consumed": _safe_float(raw.get("energy_consumed")),
+                    "state_gdp": _safe_float(raw.get("state_gdp")),
+                    "gdp_growth_rate": _safe_float(raw.get("gdp_growth_rate")),
+                    "welfare_index": _safe_float(raw.get("welfare_index")),
+                    "inequality_index": _safe_float(raw.get("inequality_index")),
+                    "migration_in": _safe_int(raw.get("migration_in")),
+                    "migration_out": _safe_int(raw.get("migration_out")),
+                    "order_type": str(raw.get("order_type", "")).strip(),
+                    "resource_type": str(raw.get("resource_type", "")).strip(),
+                    "trade_quantity": _safe_float(raw.get("trade_quantity")),
+                    "trade_price": _safe_float(raw.get("trade_price")),
+                    "trade_executed": _safe_int(raw.get("trade_executed")),
+                    "climate_event": str(raw.get("climate_event", "None")).strip(),
+                    "shock_intensity": _safe_float(raw.get("shock_intensity")),
+                }
+                # Skip rows with no state name or invalid tick
+                if not row["state"] or row["tick"] < 1:
+                    continue
+                rows.append(row)
+            except Exception as exc:
+                # Log but skip corrupt rows rather than crashing
+                print(f"[WorldSim] Warning: skipping CSV line {line_no}: {exc}")
+
+    if not rows:
+        raise ValueError("CSV loaded zero valid data rows.")
+
     return rows
 
 
@@ -88,16 +145,33 @@ class World:
 
     def __init__(self, seed: int = 42, tick_start: int = 1, tick_end: int = 120,
                  csv_path=DEFAULT_CSV):
+        # --- Input validation ---
+        if not isinstance(seed, (int, float)) or seed < 1:
+            raise ValueError(f"seed must be a positive integer, got {seed!r}")
+        seed = int(seed)
+
+        tick_start = max(1, int(tick_start))
+        tick_end = max(1, int(tick_end))
+        if tick_start > tick_end:
+            tick_start, tick_end = tick_end, tick_start  # auto-swap
+
         self.seed = seed
         self.tick_start = tick_start
         self.tick_end = tick_end
         self.rng = random.Random(seed)
 
-        # Load full dataset
+        # Load full dataset (may raise FileNotFoundError / ValueError)
         self.raw_rows = load_dataset(csv_path)
 
         # Filter to requested tick range
         self.rows = [r for r in self.raw_rows if tick_start <= r["tick"] <= tick_end]
+
+        if not self.rows:
+            raise ValueError(
+                f"No data rows found for tick range [{tick_start}, {tick_end}]. "
+                f"Dataset ticks: {min(r['tick'] for r in self.raw_rows)}–"
+                f"{max(r['tick'] for r in self.raw_rows)}"
+            )
 
         # Index by (tick, state)
         self.index: dict[tuple[int, str], list[dict]] = defaultdict(list)
@@ -240,19 +314,30 @@ class World:
 
     def get_summary(self) -> dict[str, Any]:
         """Summary at the final tick."""
-        final_tick = self.ticks[-1] if self.ticks else self.tick_end
+        if not self.ticks:
+            return {
+                "final_tick": self.tick_end,
+                "tick_range": [self.tick_start, self.tick_end],
+                "total_states": 0, "alive_states": [], "healthy_states": [],
+                "critical_states": [], "total_population": 0, "total_gdp": 0,
+                "avg_welfare": 0.0, "avg_inequality": 0.0,
+                "total_trades_executed": 0, "trade_execution_rate": 0.0,
+                "climate_events": {}, "total_data_rows": 0,
+            }
+
+        final_tick = self.ticks[-1]
         snaps = self.tick_snapshot(final_tick)
-        alive = [s for s in snaps if s["alive"]]
+        alive = [s for s in snaps if s.get("alive")]
         trade = self.trade_summary()
         climate = self.climate_summary()
 
-        total_pop = sum(s["population"] for s in alive)
-        total_gdp = round(sum(s["state_gdp"] for s in alive), 2)
-        avg_welfare = round(np.mean([s["welfare_index"] for s in alive]), 4) if alive else 0.0
-        avg_inequality = round(np.mean([s["inequality_index"] for s in alive]), 4) if alive else 0.0
+        total_pop = sum(s.get("population", 0) for s in alive)
+        total_gdp = round(sum(s.get("state_gdp", 0) for s in alive), 2)
+        avg_welfare = round(float(np.mean([s["welfare_index"] for s in alive])), 4) if alive else 0.0
+        avg_inequality = round(float(np.mean([s["inequality_index"] for s in alive])), 4) if alive else 0.0
 
         # Critical: welfare < 0.3 OR negative GDP growth
-        critical = [s["state"] for s in alive if s["welfare_index"] < 0.3 or s["gdp_growth_rate"] < 0]
+        critical = [s["state"] for s in alive if s.get("welfare_index", 0) < 0.3 or s.get("gdp_growth_rate", 0) < 0]
         healthy = [s["state"] for s in alive if s["state"] not in critical]
 
         return {

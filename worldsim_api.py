@@ -16,9 +16,9 @@ import urllib.error
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from worldsim_engine import World
 from worldsim_agents import StrategyAnalyzer
@@ -88,11 +88,26 @@ class SimulationRequest(BaseModel):
     tick_start: int = Field(default=1, ge=1, le=120)
     tick_end: int = Field(default=120, ge=1, le=120)
 
+    @field_validator("tick_end")
+    @classmethod
+    def tick_end_gte_start(cls, v, info):
+        start = info.data.get("tick_start", 1)
+        if v < start:
+            raise ValueError(f"tick_end ({v}) must be >= tick_start ({start})")
+        return v
+
 
 class OllamaRequest(BaseModel):
-    model: str = "gemma3:4b"
-    summary: str
+    model: str = Field(default="gemma3:4b", min_length=1, max_length=120)
+    summary: str = Field(default="", max_length=10000)
     state_table: List[Dict[str, Any]] = Field(default_factory=list)
+
+    @field_validator("model")
+    @classmethod
+    def model_not_blank(cls, v):
+        if not v or not v.strip():
+            raise ValueError("model name must not be empty")
+        return v.strip()
 
 
 def _as_10_line_summary(text: str, max_lines: int = 10) -> str:
@@ -236,19 +251,33 @@ def ollama_status() -> Dict[str, Any]:
 @app.post("/api/simulate")
 def simulate(payload: SimulationRequest) -> Dict[str, Any]:
     """Run dataset analysis for the given tick range and return state metrics."""
-    world = World(
-        seed=payload.seed,
-        tick_start=payload.tick_start,
-        tick_end=payload.tick_end,
-    )
-    analyzer = StrategyAnalyzer(world)
+    try:
+        world = World(
+            seed=payload.seed,
+            tick_start=payload.tick_start,
+            tick_end=payload.tick_end,
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=500, detail=f"Dataset error: {exc}")
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=f"Data validation error: {exc}")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Engine init failed: {exc}")
 
-    summary = world.get_summary()
-    trade = world.trade_summary()
-    climate = world.climate_summary()
-    strategy_classifications = analyzer.classify_all()
-    strategy_mix = analyzer.strategy_mix()
-    resilience = analyzer.resilience_ranking()
+    try:
+        analyzer = StrategyAnalyzer(world)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Strategy analyzer init failed: {exc}")
+
+    try:
+        summary = world.get_summary()
+        trade = world.trade_summary()
+        climate = world.climate_summary()
+        strategy_classifications = analyzer.classify_all()
+        strategy_mix = analyzer.strategy_mix()
+        resilience = analyzer.resilience_ranking()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Analysis computation error: {exc}")
 
     # Build per-state output at final tick
     final_tick = summary["final_tick"]
@@ -371,6 +400,11 @@ def simulate(payload: SimulationRequest) -> Dict[str, Any]:
 
 @app.post("/api/ollama/analyze")
 def ollama_analyze(payload: OllamaRequest) -> Dict[str, str]:
+    if not payload.model or not payload.model.strip():
+        return {"analysis": "Error: model name is required."}
+    if not payload.summary and not payload.state_table:
+        return {"analysis": "Error: provide a summary or state table to analyze."}
+
     allowed_states = [
         str(s.get("state", "")).strip()
         for s in payload.state_table

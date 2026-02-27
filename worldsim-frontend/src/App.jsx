@@ -9,18 +9,19 @@ import {
   WelfareTrendChart, PopulationTrendChart,
   TradeVolumeChart,
 } from './components/Charts'
+import AgentEvalPanel from './components/AgentEvalPanel'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 
-/* ── Scroll-reveal hook (IntersectionObserver) ── */
-function useReveal(threshold = 0.12) {
+/* ── Scroll-reveal hook — NVIDIA-style IntersectionObserver ── */
+function useReveal(threshold = 0.08) {
   const ref = useRef(null)
   useEffect(() => {
     const el = ref.current
     if (!el) return
     const io = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) { el.classList.add('visible'); io.unobserve(el) } },
-      { threshold },
+      { threshold, rootMargin: '0px 0px -40px 0px' },
     )
     io.observe(el)
     return () => io.disconnect()
@@ -40,6 +41,7 @@ function RevealSection({ children, className = '', delay = 0, ...props }) {
 
 function App() {
   const [introDone, setIntroDone] = useState(false)
+  const [introFading, setIntroFading] = useState(false)
   const [activeSlide, setActiveSlide] = useState(0)
   const [seed, setSeed] = useState(42)
   const [tickStart, setTickStart] = useState(1)
@@ -53,6 +55,23 @@ function App() {
   const [ollamaStatus, setOllamaStatus] = useState({ ok: false, models: [], error: '' })
   const [ollamaLoading, setOllamaLoading] = useState(false)
   const [slideKey, setSlideKey] = useState(0)
+  const [chartTab, setChartTab] = useState('gdp')
+
+  // --- Input helpers with validation ---
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const handleSeed = (e) => {
+    const v = parseInt(e.target.value, 10)
+    setSeed(Number.isFinite(v) ? clamp(v, 1, 999999) : 1)
+  }
+  const handleTickStart = (e) => {
+    const v = parseInt(e.target.value, 10)
+    setTickStart(Number.isFinite(v) ? clamp(v, 1, 120) : 1)
+  }
+  const handleTickEnd = (e) => {
+    const v = parseInt(e.target.value, 10)
+    setTickEnd(Number.isFinite(v) ? clamp(v, 1, 120) : 120)
+  }
 
   const monitoredStates = useMemo(() => simResult?.states || [], [simResult])
   const healthyCount = simResult?.summary?.healthy_states?.length || 0
@@ -117,6 +136,13 @@ function App() {
   }, [])
 
   const runSimulation = async () => {
+    // --- Client-side validation ---
+    const s = Number(seed), ts = Number(tickStart), te = Number(tickEnd)
+    if (!Number.isFinite(s) || s < 1) { setError('Seed must be a positive integer.'); return }
+    if (!Number.isFinite(ts) || ts < 1 || ts > 120) { setError('Tick Start must be between 1 and 120.'); return }
+    if (!Number.isFinite(te) || te < 1 || te > 120) { setError('Tick End must be between 1 and 120.'); return }
+    if (ts > te) { setError('Tick Start cannot be greater than Tick End.'); return }
+
     setLoading(true)
     setError('')
     setAiText('')
@@ -124,10 +150,17 @@ function App() {
       const res = await fetch(`${API_BASE}/api/simulate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ seed: Number(seed), tick_start: Number(tickStart), tick_end: Number(tickEnd) }),
+        body: JSON.stringify({ seed: s, tick_start: ts, tick_end: te }),
       })
-      if (!res.ok) throw new Error(`Simulation failed (${res.status})`)
-      setSimResult(await res.json())
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}))
+        throw new Error(errBody.detail || `Simulation failed (HTTP ${res.status})`)
+      }
+      const data = await res.json()
+      if (!data || !data.summary || !Array.isArray(data.states)) {
+        throw new Error('Unexpected response shape from server.')
+      }
+      setSimResult(data)
     } catch (err) {
       setError(err.message || 'Failed to run simulation')
     } finally {
@@ -152,30 +185,38 @@ function App() {
       setError('Ollama is offline. Start Ollama and pull a model (example: ollama pull gemma3:4b).')
       return
     }
+    const trimmedModel = (model || '').trim()
+    if (!trimmedModel) { setError('Enter an Ollama model name (e.g. gemma3:4b).'); return }
+
     setAiLoading(true)
     setError('')
     try {
-      const s = simResult.summary
+      const sm = simResult.summary
+      if (!sm) throw new Error('Simulation summary is missing. Re-run the analysis.')
+
       const summaryText = [
-        `Tick Range: ${s.tick_range?.[0]}–${s.tick_range?.[1]}`,
+        `Tick Range: ${sm.tick_range?.[0] ?? '?'}–${sm.tick_range?.[1] ?? '?'}`,
         `Healthy States: ${healthyCount}/10`,
-        `Critical: ${s.critical_states?.join(', ') || 'None'}`,
-        `Population: ${s.total_population?.toLocaleString()}`,
-        `GDP: ₹${s.total_gdp}Cr`,
-        `Avg Welfare: ${s.avg_welfare}`,
-        `Avg Inequality: ${s.avg_inequality}`,
-        `Trades Executed: ${s.total_trades_executed} (${(s.trade_execution_rate * 100).toFixed(1)}%)`,
-        `Data Rows: ${s.total_data_rows}`,
+        `Critical: ${sm.critical_states?.join(', ') || 'None'}`,
+        `Population: ${(sm.total_population || 0).toLocaleString()}`,
+        `GDP: ₹${sm.total_gdp ?? 0}Cr`,
+        `Avg Welfare: ${sm.avg_welfare ?? 0}`,
+        `Avg Inequality: ${sm.avg_inequality ?? 0}`,
+        `Trades Executed: ${sm.total_trades_executed ?? 0} (${((sm.trade_execution_rate ?? 0) * 100).toFixed(1)}%)`,
+        `Data Rows: ${sm.total_data_rows ?? 0}`,
       ].join('\n')
 
       const res = await fetch(`${API_BASE}/api/ollama/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model, summary: summaryText, state_table: monitoredStates }),
+        body: JSON.stringify({ model: trimmedModel, summary: summaryText, state_table: monitoredStates }),
       })
-      if (!res.ok) throw new Error(`Ollama analysis failed (${res.status})`)
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}))
+        throw new Error(errBody.detail || `Ollama analysis failed (HTTP ${res.status})`)
+      }
       const data = await res.json()
-      setAiText(data.analysis || '')
+      setAiText(data.analysis || 'No analysis returned.')
     } catch (err) {
       setError(err.message || 'Failed to generate insight')
     } finally {
@@ -199,10 +240,17 @@ function App() {
       ]
 
   return (
-    <div className="app-shell">
-      {!introDone && <GlobeIntro onComplete={() => setIntroDone(true)} />}
+    <div className={`app-shell ${!introDone ? 'intro-active' : ''}`}>
+      {!introDone && (
+        <GlobeIntro
+          onComplete={() => {
+            setIntroFading(true)
+            setTimeout(() => setIntroDone(true), 1600)
+          }}
+        />
+      )}
 
-      <div className={`dashboard ${introDone ? 'dashboard-visible' : ''}`}>
+      <div className={`dashboard ${introFading ? 'dashboard-visible' : ''}`}>
         <header className="topbar glass">
           <div className="brand">
             <span className="brand-dot" />
@@ -212,7 +260,7 @@ function App() {
             </div>
           </div>
           <div className="top-actions">
-            <button className="btn btn-outline" type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+            <button className="btn btn-outline" type="button" onClick={() => document.getElementById('command-center')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
               Command Center
             </button>
             <button className={`btn btn-primary ${loading ? 'btn-loading' : ''}`} onClick={runSimulation} disabled={loading}>
@@ -249,7 +297,7 @@ function App() {
             ))}
           </RevealSection>
 
-          <RevealSection className="panel-row" delay={0.12}>
+          <RevealSection className="panel-row" delay={0.12} id="command-center">
             <article className="panel panel-large glass">
               <div className="panel-head">
                 <h4>Dataset Analysis Control</h4>
@@ -258,15 +306,15 @@ function App() {
               <div className="control-grid">
                 <label>
                   Seed
-                  <input type="number" value={seed} onChange={(e) => setSeed(e.target.value)} min={1} />
+                  <input type="number" value={seed} onChange={handleSeed} min={1} max={999999} />
                 </label>
                 <label>
                   Tick Start
-                  <input type="number" value={tickStart} onChange={(e) => setTickStart(e.target.value)} min={1} max={120} />
+                  <input type="number" value={tickStart} onChange={handleTickStart} min={1} max={120} />
                 </label>
                 <label>
                   Tick End
-                  <input type="number" value={tickEnd} onChange={(e) => setTickEnd(e.target.value)} min={1} max={120} />
+                  <input type="number" value={tickEnd} onChange={handleTickEnd} min={1} max={120} />
                 </label>
                 <label>
                   Engine
@@ -408,119 +456,119 @@ function App() {
             </article>
           </RevealSection>
 
-          {/* === CHARTS SECTION === */}
-
-          <RevealSection className="panel-row" delay={0.06}>
-            <article className="panel panel-large glass chart-panel">
+          {/* === AGENT EVALUATION PARAMETERS === */}
+          <RevealSection className="ae-section" delay={0.06}>
+            <article className="panel panel-full glass">
               <div className="panel-head">
-                <h4>GDP Share by State</h4>
-                <span>Pie chart — proportional GDP contribution</span>
+                <h4>⚡ Live Agent Evaluation Parameters</h4>
+                <span>Per-state autonomous agent performance — resilience · strategy · resource efficiency</span>
               </div>
-              <GdpPieChart states={monitoredStates} />
-            </article>
-            <article className="panel glass chart-panel">
-              <div className="panel-head">
-                <h4>GDP Trend Over Ticks</h4>
-                <span>Line chart — per-state GDP evolution</span>
-              </div>
-              <GdpLineChart stateSeries={stateSeries} stateNames={stateNames} />
+              <AgentEvalPanel states={monitoredStates} resilienceRanking={simResult?.resilience_ranking} />
             </article>
           </RevealSection>
 
-          <RevealSection className="panel-row" delay={0.06}>
-            <article className="panel panel-large glass chart-panel">
-              <div className="panel-head">
-                <h4>Resource Consumption by State</h4>
-                <span>Water · Food · Energy consumed at final tick</span>
+          {/* === CHARTS — TABBED PANEL === */}
+          <RevealSection className="" delay={0.06}>
+            <div className="chart-tabs glass">
+              <div className="chart-tab-bar">
+                {[
+                  ['gdp',       'GDP'],
+                  ['resources', 'Resources'],
+                  ['trading',   'Trading'],
+                  ['welfare',   'Welfare & Pop'],
+                  ['execution', 'Execution'],
+                ].map(([key, label]) => (
+                  <button key={key}
+                    className={`chart-tab-btn ${chartTab === key ? 'active' : ''}`}
+                    onClick={() => setChartTab(key)}>{label}</button>
+                ))}
               </div>
-              <ResourceBarChart resourceConsumption={resourceConsumption} />
-            </article>
-            <article className="panel glass chart-panel">
-              <div className="panel-head">
-                <h4>Generation vs Consumption</h4>
-                <span>Resource production vs usage comparison</span>
-              </div>
-              <ResourceGenVsConChart resourceConsumption={resourceConsumption} />
-            </article>
-          </RevealSection>
 
-          <RevealSection className="panel-row" delay={0.06}>
-            <article className="panel panel-large glass chart-panel">
-              <div className="panel-head">
-                <h4>Bid vs Ask Negotiations Over Time</h4>
-                <span>Order flow + average bid/ask price per tick</span>
+              <div className="chart-tab-content">
+                {chartTab === 'gdp' && (
+                  <div className="chart-tab-grid">
+                    <article className="chart-card">
+                      <div className="panel-head"><h4>GDP Share by State</h4><span>Proportional GDP contribution</span></div>
+                      <GdpPieChart states={monitoredStates} />
+                    </article>
+                    <article className="chart-card">
+                      <div className="panel-head"><h4>GDP Trend Over Ticks</h4><span>Per-state GDP evolution</span></div>
+                      <GdpLineChart stateSeries={stateSeries} stateNames={stateNames} />
+                    </article>
+                  </div>
+                )}
+                {chartTab === 'resources' && (
+                  <div className="chart-tab-grid">
+                    <article className="chart-card">
+                      <div className="panel-head"><h4>Resource Consumption</h4><span>Water · Food · Energy consumed</span></div>
+                      <ResourceBarChart resourceConsumption={resourceConsumption} />
+                    </article>
+                    <article className="chart-card">
+                      <div className="panel-head"><h4>Generation vs Consumption</h4><span>Production vs usage</span></div>
+                      <ResourceGenVsConChart resourceConsumption={resourceConsumption} />
+                    </article>
+                  </div>
+                )}
+                {chartTab === 'trading' && (
+                  <div className="chart-tab-grid">
+                    <article className="chart-card">
+                      <div className="panel-head"><h4>Bid vs Ask Over Time</h4><span>Order flow + avg bid/ask price</span></div>
+                      <BidAskChart bidAskOverTime={bidAskOverTime} />
+                    </article>
+                    <article className="chart-card">
+                      <div className="panel-head"><h4>Bid vs Ask Per State</h4><span>Order distribution</span></div>
+                      <BidAskStateChart bidAskByState={bidAskByState} />
+                    </article>
+                  </div>
+                )}
+                {chartTab === 'welfare' && (
+                  <div className="chart-tab-grid">
+                    <article className="chart-card">
+                      <div className="panel-head"><h4>Welfare Index Trend</h4><span>Per-state welfare trajectory</span></div>
+                      <WelfareTrendChart stateSeries={stateSeries} stateNames={stateNames} />
+                    </article>
+                    <article className="chart-card">
+                      <div className="panel-head"><h4>Population Trend</h4><span>Stacked area — over time</span></div>
+                      <PopulationTrendChart stateSeries={stateSeries} stateNames={stateNames} />
+                    </article>
+                  </div>
+                )}
+                {chartTab === 'execution' && (
+                  <div className="chart-tab-grid">
+                    <article className="chart-card">
+                      <div className="panel-head"><h4>Trade Execution by State</h4><span>Executed vs pending orders</span></div>
+                      <TradeVolumeChart states={monitoredStates} />
+                    </article>
+                    <article className="chart-card">
+                      <div className="panel-head"><h4>Climate Events</h4><span>Distribution across dataset</span></div>
+                      <ul className="mix-list">
+                        {simResult?.climate
+                          ? Object.entries(simResult.climate.event_counts || {}).map(([evt, count]) => (
+                              <li key={evt}>
+                                <span>{evt}</span>
+                                <strong>{count} ({(simResult.climate.avg_shock_by_event?.[evt] || 0).toFixed(2)} avg shock)</strong>
+                              </li>
+                            ))
+                          : <li><span>Run analysis to see climate data</span></li>}
+                      </ul>
+                      {simResult?.trade && (
+                        <>
+                          <div className="panel-head" style={{ marginTop: '0.8rem' }}><h4>Trade Analytics</h4><span>By resource</span></div>
+                          <ul className="mix-list">
+                            {Object.entries(simResult.trade.by_resource || {}).map(([res, count]) => (
+                              <li key={res}>
+                                <span>{res}</span>
+                                <strong>{count} trades · Vol: {Math.round(simResult.trade.volume_by_resource?.[res] || 0)}</strong>
+                              </li>
+                            ))}
+                          </ul>
+                        </>
+                      )}
+                    </article>
+                  </div>
+                )}
               </div>
-              <BidAskChart bidAskOverTime={bidAskOverTime} />
-            </article>
-            <article className="panel glass chart-panel">
-              <div className="panel-head">
-                <h4>Bid vs Ask Per State</h4>
-                <span>Horizontal bar — order distribution</span>
-              </div>
-              <BidAskStateChart bidAskByState={bidAskByState} />
-            </article>
-          </RevealSection>
-
-          <RevealSection className="panel-row" delay={0.06}>
-            <article className="panel panel-large glass chart-panel">
-              <div className="panel-head">
-                <h4>Welfare Index Trend</h4>
-                <span>Per-state welfare trajectory across all ticks</span>
-              </div>
-              <WelfareTrendChart stateSeries={stateSeries} stateNames={stateNames} />
-            </article>
-            <article className="panel glass chart-panel">
-              <div className="panel-head">
-                <h4>Population Trend</h4>
-                <span>Stacked area — state populations over time</span>
-              </div>
-              <PopulationTrendChart stateSeries={stateSeries} stateNames={stateNames} />
-            </article>
-          </RevealSection>
-
-          <RevealSection className="panel-row" delay={0.06}>
-            <article className="panel panel-large glass chart-panel">
-              <div className="panel-head">
-                <h4>Trade Execution by State</h4>
-                <span>Executed vs pending orders per state</span>
-              </div>
-              <TradeVolumeChart states={monitoredStates} />
-            </article>
-            <article className="panel glass">
-              <div className="panel-head">
-                <h4>Climate Events</h4>
-                <span>Distribution across dataset</span>
-              </div>
-              <ul className="mix-list">
-                {simResult?.climate
-                  ? Object.entries(simResult.climate.event_counts || {}).map(([evt, count]) => (
-                      <li key={evt}>
-                        <span>{evt}</span>
-                        <strong>{count} ({(simResult.climate.avg_shock_by_event?.[evt] || 0).toFixed(2)} avg shock)</strong>
-                      </li>
-                    ))
-                  : <li><span>Run analysis to see climate data</span></li>}
-              </ul>
-            </article>
-          </RevealSection>
-
-          <RevealSection className="panel-row" delay={0.06}>
-            <article className="panel glass">
-              <div className="panel-head">
-                <h4>Trade Analytics</h4>
-                <span>Resource-wise execution summary</span>
-              </div>
-              <ul className="mix-list">
-                {simResult?.trade
-                  ? Object.entries(simResult.trade.by_resource || {}).map(([res, count]) => (
-                      <li key={res}>
-                        <span>{res}</span>
-                        <strong>{count} trades · Vol: {Math.round(simResult.trade.volume_by_resource?.[res] || 0)}</strong>
-                      </li>
-                    ))
-                  : <li><span>Run analysis to see trade data</span></li>}
-              </ul>
-            </article>
+            </div>
           </RevealSection>
 
           {/* === India Map === */}

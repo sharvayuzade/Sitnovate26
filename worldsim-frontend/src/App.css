@@ -1,48 +1,62 @@
-/* ====================================================================
-   App.css — India Resource Nexus · Enterprise Dashboard
+﻿/* ====================================================================
+   App.css - India Resource Nexus - NVIDIA-Grade Motion System
    ====================================================================
-   Clean, dense, professional. Inspired by Bloomberg / Grafana / Datadog.
+   Inspired by nvidia.com - GPU-accelerated transitions, parallax reveals,
+   perspective-driven hover lifts, cinematic section entrances.
    ================================================================== */
 
-/* ── Shell ── */
+/* -- Shell -- */
 .app-shell {
   min-height: 100vh;
   color: var(--text-primary);
   overflow-x: hidden;
+  perspective: 1200px;
 }
 
+/* Lock viewport during intro — no scroll behind globe */
+.app-shell.intro-active {
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Dashboard entrance - cinematic fade from black */
 .dashboard {
   opacity: 0;
   pointer-events: none;
-  transform: translateY(16px);
-  transition: opacity 800ms cubic-bezier(0.16, 1, 0.3, 1),
-              transform 800ms cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translate3d(0, 20px, 0);
+  transition:
+    opacity 1200ms var(--ease-out-expo),
+    transform 1200ms var(--ease-out-expo);
+  will-change: opacity, transform;
 }
 .dashboard-visible {
   opacity: 1;
   pointer-events: auto;
-  transform: translateY(0);
+  transform: translate3d(0, 0, 0);
 }
 
-/* ── Card base (replaces .glass) ── */
+/* -- Card base - NVIDIA glass morphism -- */
 .glass {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  transition: border-color 0.35s ease,
-              box-shadow 0.35s ease,
-              transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    border-color var(--duration-med) var(--ease-smooth),
+    box-shadow var(--duration-med) var(--ease-smooth),
+    transform var(--duration-med) var(--ease-out-expo);
+  will-change: transform;
 }
 .glass:hover {
-  border-color: var(--accent-border);
-  box-shadow: 0 0 0 1px var(--accent-dim),
-              0 8px 32px -8px rgba(0, 0, 0, 0.4);
+  border-color: var(--border-hover);
+  box-shadow:
+    0 0 0 1px rgba(118, 185, 0, 0.05),
+    0 16px 48px -12px rgba(0, 0, 0, 0.5);
 }
 
-/* ── Top bar ── */
+/* -- Top bar - frosted NVIDIA nav -- */
 .topbar {
   margin: 0;
-  padding: 0.65rem 1.25rem;
+  padding: 0.7rem 1.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -51,14 +65,25 @@
   border-left: none;
   border-right: none;
   border-top: none;
-  background: rgba(17, 24, 39, 0.85);
-  backdrop-filter: blur(16px) saturate(1.3);
-  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  background: rgba(10, 10, 10, 0.88);
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 100;
-  animation: fadeInDown 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: fadeInDown 0.8s var(--ease-out-expo) both;
+}
+.topbar::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(118, 185, 0, 0.2), transparent);
+  animation: lineExpand 1.2s var(--ease-out-expo) 0.3s both;
+  transform-origin: center;
 }
 .topbar:hover {
   border-color: var(--border);
@@ -69,20 +94,20 @@
 .brand {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.7rem;
 }
 
 .brand h1 {
   margin: 0;
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.01em;
 }
 
 .brand p {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 400;
 }
 
@@ -92,7 +117,8 @@
   border-radius: 50%;
   background: var(--accent);
   flex-shrink: 0;
-  animation: dotPulse 2.5s ease-in-out infinite;
+  animation: pulseGlow 3s ease-in-out infinite;
+  box-shadow: 0 0 8px rgba(118, 185, 0, 0.4);
 }
 
 .top-actions {
@@ -101,34 +127,43 @@
   align-items: center;
 }
 
-/* ── Layout ── */
+/* -- Layout -- */
 .layout {
-  padding: 0.75rem;
+  padding: 1rem;
   display: grid;
-  gap: 0.75rem;
+  gap: 1rem;
   max-width: 1600px;
   margin: 0 auto;
 }
 
-/* ── Hero — premium animated banner ── */
+/* -- Hero - NVIDIA cinematic banner -- */
 .hero {
   position: relative;
   overflow: hidden;
   min-height: auto;
   display: grid;
   grid-template-columns: 1fr;
-  padding: 1.25rem 1.5rem;
+  padding: 2rem 2rem;
   background:
-    linear-gradient(135deg, rgba(59, 130, 246, 0.04) 0%, transparent 50%,  rgba(99, 102, 241, 0.03) 100%),
+    linear-gradient(135deg, rgba(118, 185, 0, 0.03) 0%, transparent 40%, rgba(0, 212, 170, 0.02) 100%),
     var(--bg-card);
-  background-size: 200% 200%;
-  animation: gradientShift 12s ease infinite;
 }
 .hero::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 60% 50% at 10% 40%, rgba(59, 130, 246, 0.06), transparent);
+  background:
+    radial-gradient(ellipse 50% 60% at 5% 50%, rgba(118, 185, 0, 0.04), transparent),
+    radial-gradient(ellipse 30% 40% at 95% 20%, rgba(0, 212, 170, 0.03), transparent);
+  pointer-events: none;
+}
+/* Animated scan-line like NVIDIA product pages */
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 40%, rgba(118, 185, 0, 0.02) 50%, transparent 60%);
+  animation: scanLine 8s linear infinite;
   pointer-events: none;
 }
 
@@ -138,31 +173,31 @@
 }
 
 .hero-content h2 {
-  margin: 0.15rem 0 0.3rem;
-  font-size: 1.2rem;
+  margin: 0.2rem 0 0.4rem;
+  font-size: 1.35rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
   color: var(--text-primary);
 }
 
-/* Slide text crossfade */
+/* NVIDIA-style slide crossfade - smooth 3D transform */
 .hero-content h2,
 .hero-content p:not(.eyebrow) {
-  animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: fadeInUp 0.6s var(--ease-out-expo) both;
 }
 
 .hero-content p {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   max-width: 72ch;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 .eyebrow {
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  font-size: 0.62rem;
   color: var(--accent);
   font-weight: 600;
 }
@@ -171,30 +206,31 @@
 
 .slide-dots {
   display: flex;
-  gap: 0.4rem;
-  margin-top: 0.65rem;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
 }
 
 .dot {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   border: none;
   cursor: pointer;
-  background: var(--border);
-  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  background: var(--border-hover);
+  transition:
+    all var(--duration-med) var(--ease-out-expo);
 }
 .dot:hover {
   background: var(--text-muted);
-  transform: scale(1.3);
+  transform: scale(1.4);
 }
 .dot.active {
   background: var(--accent);
-  box-shadow: 0 0 8px rgba(59, 130, 246, 0.45);
-  transform: scale(1.25);
+  box-shadow: 0 0 12px rgba(118, 185, 0, 0.5);
+  transform: scale(1.3);
 }
 
-/* ── KPI Row ── */
+/* -- KPI Row - NVIDIA stat cards with perspective lift -- */
 .kpi-grid {
   display: grid;
   gap: 0.75rem;
@@ -202,16 +238,20 @@
 }
 
 .kpi {
-  padding: 0.75rem 0.85rem;
+  padding: 1rem 1rem;
   position: relative;
   overflow: hidden;
-  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 0.35s ease,
-              border-color 0.35s ease;
+  transition:
+    transform var(--duration-med) var(--ease-out-expo),
+    box-shadow var(--duration-med) var(--ease-smooth),
+    border-color var(--duration-med) var(--ease-smooth);
+  will-change: transform;
 }
 .kpi:hover {
-  transform: translateY(-2px);
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 20px 40px -16px rgba(0, 0, 0, 0.4);
 }
+/* NVIDIA-style left accent bar */
 .kpi::before {
   content: '';
   position: absolute;
@@ -219,30 +259,31 @@
   top: 0;
   bottom: 0;
   width: 3px;
-  background: var(--accent);
-  border-radius: 0 2px 2px 0;
-  transition: width 0.3s ease;
+  background: linear-gradient(180deg, var(--accent), var(--accent-secondary));
+  border-radius: 0 3px 3px 0;
+  transition: width var(--duration-med) var(--ease-out-expo);
 }
 .kpi:hover::before {
   width: 4px;
+  box-shadow: 0 0 12px rgba(118, 185, 0, 0.3);
 }
 
 .kpi p {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-weight: 500;
+  letter-spacing: 0.06em;
+  font-weight: 600;
 }
 
 .kpi h3 {
-  margin: 0.15rem 0 0.1rem;
-  font-size: 1.35rem;
+  margin: 0.2rem 0 0.15rem;
+  font-size: 1.4rem;
   font-weight: 700;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
-  animation: countUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: countUp 0.7s var(--ease-out-expo) both;
 }
 
 .kpi span {
@@ -250,18 +291,20 @@
   font-size: 0.72rem;
 }
 
-/* ── Panel grid ── */
+/* -- Panel grid -- */
 .panel-row {
   display: grid;
-  gap: 0.75rem;
+  gap: 1rem;
   grid-template-columns: 1.3fr 0.7fr;
 }
 
 .panel {
-  padding: 0.85rem;
-  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 0.35s ease,
-              border-color 0.35s ease;
+  padding: 1rem;
+  transition:
+    transform var(--duration-med) var(--ease-out-expo),
+    box-shadow var(--duration-med) var(--ease-smooth),
+    border-color var(--duration-med) var(--ease-smooth);
+  will-change: transform;
 }
 
 .panel-large {
@@ -272,9 +315,26 @@
   display: flex;
   align-items: baseline;
   gap: 0.6rem;
-  padding-bottom: 0.5rem;
+  padding-bottom: 0.55rem;
   border-bottom: 1px solid var(--border-subtle);
-  margin-bottom: 0.6rem;
+  margin-bottom: 0.65rem;
+  position: relative;
+}
+/* NVIDIA-style expanding underline on section headers */
+.panel-head::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 40px;
+  height: 1px;
+  background: var(--accent);
+  transition: width var(--duration-slow) var(--ease-out-expo);
+}
+.panel:hover .panel-head::after,
+.chart-card:hover .panel-head::after,
+.chart-tabs:hover .panel-head::after {
+  width: 100%;
 }
 
 .panel-head h4 {
@@ -287,44 +347,46 @@
 
 .panel-head span {
   color: var(--text-muted);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 400;
 }
 
-/* ── Form controls ── */
+/* -- Form controls - NVIDIA clean inputs -- */
 .control-grid {
-  margin-top: 0.6rem;
+  margin-top: 0.65rem;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.6rem;
+  gap: 0.65rem;
 }
 
 .control-grid label {
   display: grid;
-  gap: 0.2rem;
-  font-size: 0.72rem;
+  gap: 0.25rem;
+  font-size: 0.7rem;
   color: var(--text-secondary);
-  font-weight: 500;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
 }
 
 .control-grid input,
 .model-input input {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 0.4rem 0.55rem;
+  padding: 0.45rem 0.6rem;
   background: var(--bg-primary);
   color: var(--text-primary);
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-family: inherit;
-  transition: border-color 150ms;
+  transition:
+    border-color var(--duration-fast) var(--ease-smooth),
+    box-shadow var(--duration-fast) var(--ease-smooth);
 }
 .control-grid input:focus,
 .model-input input:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-dim);
+  box-shadow: 0 0 0 3px var(--accent-dim), 0 0 16px rgba(118, 185, 0, 0.08);
 }
 
 .error-text {
@@ -335,70 +397,72 @@
 }
 
 .model-input {
-  margin-top: 0.6rem;
+  margin-top: 0.65rem;
   display: grid;
-  gap: 0.2rem;
+  gap: 0.25rem;
   color: var(--text-secondary);
-  font-size: 0.72rem;
-  font-weight: 500;
+  font-size: 0.7rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
 }
 
 .control-actions {
   display: flex;
   gap: 0.5rem;
-  margin-top: 0.75rem;
+  margin-top: 0.8rem;
 }
 
-/* ── Buttons ── */
+/* -- Buttons - NVIDIA signature style -- */
 .btn {
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  padding: 0.4rem 0.85rem;
-  font-weight: 500;
+  padding: 0.45rem 1rem;
+  font-weight: 600;
   font-size: 0.78rem;
   cursor: pointer;
   font-family: inherit;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  letter-spacing: 0;
+  transition: all var(--duration-med) var(--ease-out-expo);
+  letter-spacing: 0.01em;
   position: relative;
   overflow: hidden;
 }
+/* NVIDIA sweeping light effect on hover */
 .btn::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.06) 50%, transparent 70%);
-  transform: translateX(-100%);
-  transition: transform 0.5s ease;
+  background: linear-gradient(110deg, transparent 25%, rgba(255,255,255,0.08) 50%, transparent 75%);
+  transform: translate3d(-100%, 0, 0);
+  transition: transform 0.6s var(--ease-out-expo);
 }
 .btn:hover::after {
-  transform: translateX(100%);
+  transform: translate3d(100%, 0, 0);
 }
 
 .btn-primary {
   background: var(--accent);
-  color: #fff;
+  color: #000;
   border-color: var(--accent);
-  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 2px 8px rgba(118, 185, 0, 0.25);
+  font-weight: 700;
 }
 .btn-primary:hover:not(:disabled) {
-  background: #2563eb;
-  border-color: #2563eb;
-  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35);
-  transform: translateY(-1px);
+  background: #85d000;
+  border-color: #85d000;
+  box-shadow: 0 8px 24px rgba(118, 185, 0, 0.3);
+  transform: translateY(-2px);
 }
 .btn-primary:active:not(:disabled) {
   transform: translateY(0);
-  box-shadow: 0 1px 4px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 2px 8px rgba(118, 185, 0, 0.3);
 }
 .btn-primary:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
-/* Loading spinner inside btn */
+/* Loading spinner - NVIDIA green orbit */
 .btn-loading {
   pointer-events: none;
   position: relative;
@@ -409,8 +473,8 @@
   position: absolute;
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: #fff;
+  border: 2px solid rgba(0,0,0,0.2);
+  border-top-color: #000;
   border-radius: 50%;
   left: 50%;
   top: 50%;
@@ -421,19 +485,19 @@
 .btn-outline {
   background: transparent;
   color: var(--text-secondary);
-  border-color: var(--border);
+  border-color: var(--border-hover);
 }
 .btn-outline:hover:not(:disabled) {
   background: var(--bg-elevated);
   color: var(--text-primary);
-  border-color: var(--text-muted);
-  transform: translateY(-1px);
+  border-color: var(--accent-border);
+  transform: translateY(-2px);
 }
 .btn-outline:active:not(:disabled) {
   transform: translateY(0);
 }
 
-/* ── Status pills ── */
+/* -- Status pills -- */
 .pill {
   margin-top: 0.5rem;
   display: inline-block;
@@ -441,29 +505,39 @@
   border: 1px solid var(--accent-border);
   color: var(--accent);
   border-radius: var(--radius-sm);
-  padding: 0.15rem 0.5rem;
+  padding: 0.18rem 0.55rem;
   font-size: 0.7rem;
-  font-weight: 500;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
 .ai-summary {
   color: var(--text-secondary);
   font-size: 0.8rem;
-  line-height: 1.6;
-  margin: 0.6rem 0 0.75rem;
+  line-height: 1.7;
+  margin: 0.65rem 0 0.8rem;
   white-space: pre-line;
 }
 
-/* ── Footer ── */
+/* -- Footer - gradient horizon line -- */
 .footer-note {
-  padding: 0.6rem 0.85rem;
+  padding: 0.8rem 1rem;
   color: var(--text-muted);
   font-size: 0.72rem;
   text-align: center;
   border-radius: var(--radius-lg);
   border-top: 1px solid var(--border-subtle);
-  background: linear-gradient(180deg, transparent, rgba(59, 130, 246, 0.02));
+  background: linear-gradient(180deg, transparent, rgba(118, 185, 0, 0.015));
+  position: relative;
+}
+.footer-note::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(118, 185, 0, 0.15), transparent);
 }
 .footer-note:hover {
   border-color: var(--border);
@@ -471,11 +545,11 @@
   transform: none;
 }
 
-/* ── Shimmer loading placeholder ── */
+/* -- Shimmer loading - NVIDIA green tint -- */
 .shimmer {
   background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-elevated) 37%, var(--bg-card) 63%);
   background-size: 200% 100%;
-  animation: shimmer 1.8s ease-in-out infinite;
+  animation: shimmer 2s ease-in-out infinite;
   border-radius: var(--radius-sm);
 }
 .shimmer-text {
@@ -489,7 +563,7 @@
   margin: 0.5rem 0;
 }
 
-/* ── Data table ── */
+/* -- Data table - sleek NVIDIA grid -- */
 .table-wrap {
   margin-top: 0;
   overflow: auto;
@@ -506,7 +580,7 @@ table {
 
 th, td {
   text-align: left;
-  padding: 0.4rem 0.5rem;
+  padding: 0.45rem 0.55rem;
   border-bottom: 1px solid var(--border-subtle);
   font-size: 0.75rem;
   white-space: nowrap;
@@ -517,8 +591,8 @@ th {
   color: var(--text-muted);
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-size: 0.65rem;
+  letter-spacing: 0.05em;
+  font-size: 0.62rem;
   position: sticky;
   top: 0;
   background: var(--bg-surface);
@@ -526,21 +600,21 @@ th {
 }
 
 tbody tr {
-  transition: background 100ms;
+  transition: background var(--duration-fast) var(--ease-smooth);
 }
 tbody tr:hover {
-  background: var(--bg-elevated);
+  background: rgba(118, 185, 0, 0.03);
 }
 
 .row-critical {
-  background: rgba(239, 68, 68, 0.06);
+  background: rgba(255, 68, 68, 0.04);
 }
 .row-critical:hover {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(255, 68, 68, 0.08);
 }
 
-.text-red  { color: #f87171; }
-.text-green { color: #34d399; }
+.text-red  { color: #ff6b6b; }
+.text-green { color: var(--accent); }
 
 .strategy-tag {
   display: inline-block;
@@ -548,23 +622,24 @@ tbody tr:hover {
   border: 1px solid var(--accent-border);
   color: var(--accent);
   border-radius: var(--radius-sm);
-  padding: 0.1rem 0.4rem;
+  padding: 0.12rem 0.45rem;
   font-size: 0.65rem;
-  font-weight: 500;
-  transition: all 0.2s ease;
+  font-weight: 600;
+  transition: all var(--duration-med) var(--ease-out-expo);
 }
 .strategy-tag:hover {
-  background: rgba(59, 130, 246, 0.25);
-  transform: scale(1.05);
+  background: rgba(118, 185, 0, 0.2);
+  transform: scale(1.06);
+  box-shadow: 0 0 8px rgba(118, 185, 0, 0.15);
 }
 
-/* ── List cards ── */
+/* -- List cards - NVIDIA slide-in rows -- */
 .mix-list {
   margin: 0;
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 0.35rem;
+  gap: 0.4rem;
 }
 
 .mix-list li {
@@ -573,15 +648,17 @@ tbody tr:hover {
   align-items: center;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
-  padding: 0.35rem 0.55rem;
+  padding: 0.4rem 0.6rem;
   color: var(--text-secondary);
   font-size: 0.78rem;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all var(--duration-med) var(--ease-out-expo);
+  will-change: transform;
 }
 .mix-list li:hover {
   background: var(--bg-elevated);
   border-color: var(--accent-border);
-  transform: translateX(3px);
+  transform: translate3d(6px, 0, 0);
+  box-shadow: -4px 0 12px rgba(118, 185, 0, 0.06);
 }
 
 .mix-list strong {
@@ -589,7 +666,7 @@ tbody tr:hover {
   font-variant-numeric: tabular-nums;
 }
 
-/* ── India map ── */
+/* -- India map -- */
 .india-map-wrap {
   margin-top: 0;
   position: relative;
@@ -616,8 +693,8 @@ tbody tr:hover {
 
 .india-overlay-title {
   position: absolute;
-  left: 0.6rem;
-  top: 0.55rem;
+  left: 0.7rem;
+  top: 0.6rem;
   z-index: 2;
 }
 
@@ -636,17 +713,17 @@ tbody tr:hover {
 
 .india-legend {
   position: absolute;
-  left: 0.6rem;
-  bottom: 0.6rem;
+  left: 0.7rem;
+  bottom: 0.7rem;
   display: flex;
-  gap: 0.5rem;
+  gap: 0.55rem;
   flex-wrap: wrap;
   z-index: 3;
 }
 .india-legend span {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.3rem;
   font-size: 0.65rem;
   color: var(--text-muted);
 }
@@ -657,20 +734,20 @@ tbody tr:hover {
   border-radius: 2px;
 }
 
-/* Hover card */
+/* Hover card - NVIDIA tooltip style */
 .india-hover-card {
   position: absolute;
-  right: 0.6rem;
-  top: 0.55rem;
-  width: min(320px, calc(100% - 1.2rem));
-  background: rgba(17, 24, 39, 0.92);
-  border: 1px solid var(--border);
-  backdrop-filter: blur(14px) saturate(1.2);
-  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  right: 0.7rem;
+  top: 0.6rem;
+  width: min(320px, calc(100% - 1.4rem));
+  background: rgba(18, 18, 18, 0.95);
+  border: 1px solid var(--border-hover);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
   border-radius: var(--radius-md);
-  padding: 0.55rem 0.65rem;
+  padding: 0.6rem 0.7rem;
   z-index: 4;
-  animation: fadeInScale 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: fadeInScale 0.35s var(--ease-out-expo) both;
 }
 
 .india-hover-card h6 {
@@ -685,7 +762,7 @@ tbody tr:hover {
 
 .hover-badge {
   font-size: 0.6rem;
-  padding: 0.08rem 0.35rem;
+  padding: 0.08rem 0.4rem;
   border-radius: var(--radius-sm);
   font-weight: 600;
 }
@@ -693,19 +770,19 @@ tbody tr:hover {
 .hover-grid {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 0.25rem 0.4rem;
-  margin-top: 0.35rem;
+  gap: 0.3rem 0.45rem;
+  margin-top: 0.4rem;
 }
 .hover-grid div {
   display: flex;
   flex-direction: column;
 }
 .hover-grid label {
-  font-size: 0.58rem;
+  font-size: 0.56rem;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-weight: 500;
+  letter-spacing: 0.05em;
+  font-weight: 600;
 }
 .hover-grid strong {
   font-size: 0.78rem;
@@ -714,8 +791,8 @@ tbody tr:hover {
 }
 
 .hover-strategy {
-  margin-top: 0.3rem;
-  padding-top: 0.3rem;
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
   border-top: 1px solid var(--border-subtle);
   font-size: 0.72rem;
   color: var(--text-muted);
@@ -740,8 +817,91 @@ tbody tr:hover {
 }
 
 /* ====================================================================
-   Charts
+   Charts - NVIDIA Tabbed Panel with smooth tab transitions
    ==================================================================== */
+.chart-tabs {
+  border-radius: var(--radius-lg);
+  padding: 1.3rem 1.2rem;
+}
+
+.chart-tab-bar {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.2rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.8rem;
+  position: relative;
+}
+
+.chart-tab-btn {
+  padding: 0.5rem 1.1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--duration-med) var(--ease-out-expo);
+  position: relative;
+}
+
+.chart-tab-btn:hover {
+  background: rgba(118, 185, 0, 0.06);
+  color: var(--text-primary);
+}
+
+.chart-tab-btn.active {
+  background: rgba(118, 185, 0, 0.1);
+  color: var(--accent);
+  border-color: var(--accent-border);
+  box-shadow: 0 0 16px rgba(118, 185, 0, 0.08);
+}
+
+/* NVIDIA active tab bottom indicator */
+.chart-tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -0.85rem;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+  box-shadow: 0 0 8px rgba(118, 185, 0, 0.4);
+}
+
+.chart-tab-content {
+  animation: fadeInUp 0.5s var(--ease-out-expo) both;
+}
+
+.chart-tab-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.chart-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  min-height: 320px;
+  transition:
+    border-color var(--duration-med) var(--ease-smooth),
+    box-shadow var(--duration-med) var(--ease-smooth),
+    transform var(--duration-med) var(--ease-out-expo);
+  will-change: transform;
+}
+
+.chart-card:hover {
+  border-color: rgba(118, 185, 0, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  transform: translateY(-2px);
+}
+
 .chart-panel {
   min-height: 360px;
   padding-bottom: 0.4rem;
@@ -755,19 +915,20 @@ tbody tr:hover {
 }
 
 .chart-tooltip {
-  background: rgba(10, 14, 26, 0.94);
-  border: 1px solid var(--border);
+  background: rgba(10, 10, 10, 0.96);
+  border: 1px solid var(--border-hover);
   border-radius: var(--radius-sm);
-  padding: 0.4rem 0.55rem;
+  padding: 0.45rem 0.6rem;
   font-size: 0.72rem;
   color: var(--text-primary);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
   max-width: 260px;
+  backdrop-filter: blur(8px);
 }
 
 .chart-tooltip-label {
-  margin: 0 0 0.2rem;
-  font-weight: 600;
+  margin: 0 0 0.25rem;
+  font-weight: 700;
   color: var(--accent);
   font-size: 0.72rem;
 }
@@ -782,14 +943,21 @@ tbody tr:hover {
 }
 
 /* ====================================================================
-   Intro screen — cinematic
+   Intro screen - NVIDIA cinematic launch
    ==================================================================== */
 .intro-screen {
   position: fixed;
   inset: 0;
-  background: var(--bg-primary);
+  background: #000;
   z-index: 9999;
   overflow: hidden;
+  opacity: 1;
+  transition: opacity 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.intro-screen.intro-fading {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .intro-canvas {
@@ -801,8 +969,8 @@ tbody tr:hover {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 50% 45%, transparent 20%, rgba(10, 14, 26, 0.65) 70%),
-    linear-gradient(180deg, transparent 60%, rgba(10, 14, 26, 0.95) 100%);
+    radial-gradient(circle at 50% 45%, transparent 15%, rgba(0, 0, 0, 0.6) 65%),
+    linear-gradient(180deg, transparent 50%, rgba(0, 0, 0, 0.95) 100%);
   pointer-events: none;
 }
 
@@ -813,74 +981,146 @@ tbody tr:hover {
   transform: translateX(-50%);
   width: min(640px, 88vw);
   text-align: center;
-  animation: fadeInUp 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both;
+  animation: fadeInUp 1.4s var(--ease-out-expo) 0.5s both;
 }
 
 .intro-tag {
   margin: 0;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--accent);
-  font-size: 0.7rem;
-  font-weight: 600;
-  animation: fadeInUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.6s both;
+  font-size: 0.72rem;
+  font-weight: 700;
+  animation: fadeInUp 1s var(--ease-out-expo) 0.7s both;
 }
 
 .intro-copy h1 {
-  margin: 0.4rem 0 0.5rem;
-  font-size: clamp(1.5rem, 4vw, 3rem);
-  font-weight: 700;
+  margin: 0.5rem 0 0.6rem;
+  font-size: clamp(1.6rem, 4.5vw, 3.2rem);
+  font-weight: 800;
   letter-spacing: -0.03em;
-  background: linear-gradient(135deg, #f1f5f9 0%, #94a3b8 50%, #f1f5f9 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #a3a3a3 40%, #ffffff 80%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  animation: fadeInUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.8s both,
-             gradientShift 6s ease infinite;
+  animation:
+    fadeInUp 1.2s var(--ease-out-expo) 0.9s both,
+    gradientShift 8s ease infinite;
 }
 
 .intro-slide {
   margin: 0;
   color: var(--text-secondary);
-  font-size: clamp(0.88rem, 1.5vw, 1.08rem);
+  font-size: clamp(0.9rem, 1.6vw, 1.1rem);
   min-height: 1.5em;
-  transition: opacity 0.5s ease, transform 0.5s ease;
+  transition:
+    opacity 0.6s var(--ease-smooth),
+    transform 0.6s var(--ease-out-expo);
 }
 
-/* Progress bar under intro */
+/* NVIDIA-style progress bar - green gradient with glow */
 .intro-progress {
   position: absolute;
   bottom: 0;
   left: 0;
   height: 2px;
-  background: linear-gradient(90deg, var(--accent), #818cf8);
+  background: linear-gradient(90deg, var(--accent), var(--accent-secondary));
   border-radius: 1px;
-  transition: width 0.3s ease;
+  transition: width 0.15s linear;
   z-index: 10;
+  box-shadow: 0 0 12px rgba(118, 185, 0, 0.4);
 }
 
 .intro-skip {
   position: absolute;
   top: 1.2rem;
   right: 1.2rem;
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-sm);
-  background: rgba(17, 24, 39, 0.6);
-  backdrop-filter: blur(8px);
+  background: rgba(18, 18, 18, 0.7);
+  backdrop-filter: blur(12px);
   color: var(--text-secondary);
-  padding: 0.35rem 0.8rem;
+  padding: 0.4rem 0.9rem;
   cursor: pointer;
   font-size: 0.75rem;
+  font-weight: 600;
   font-family: inherit;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  animation: fadeInDown 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.2s both;
+  transition: all var(--duration-med) var(--ease-out-expo);
+  animation: fadeInDown 1s var(--ease-out-expo) 1.5s both;
 }
 .intro-skip:hover {
-  background: rgba(30, 41, 59, 0.8);
+  background: rgba(30, 30, 30, 0.9);
   color: var(--text-primary);
   border-color: var(--accent-border);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* ====================================================================
+   Additional keyframes for App.css
+   ==================================================================== */
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -16px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 20px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale3d(0.92, 0.92, 1) translate3d(0, 8px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: scale3d(1, 1, 1) translate3d(0, 0, 0);
+  }
+}
+
+@keyframes countUp {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% center; }
+  50%      { background-position: 200% center; }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(118, 185, 0, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(118, 185, 0, 0.7);
+  }
 }
 
 @keyframes orbit {
@@ -889,13 +1129,15 @@ tbody tr:hover {
 }
 
 /* ====================================================================
-   Responsive
+   Responsive - NVIDIA-style adaptive layout
    ==================================================================== */
 @media (max-width: 1080px) {
   .hero { grid-template-columns: 1fr; }
   .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .panel-row { grid-template-columns: 1fr; }
   .chart-panel { min-height: 280px; }
+  .chart-tab-grid { grid-template-columns: 1fr; }
+  .chart-card { min-height: 260px; }
 }
 
 @media (max-width: 640px) {
@@ -907,4 +1149,207 @@ tbody tr:hover {
   .kpi-grid { grid-template-columns: 1fr; }
   .control-grid { grid-template-columns: 1fr; }
   .layout { padding: 0.5rem; gap: 0.5rem; }
+  .chart-tab-bar { gap: 0.35rem; }
+  .chart-tab-btn { font-size: 0.7rem; padding: 0.35rem 0.7rem; }
+  .ae-grid { grid-template-columns: 1fr; }
+  .ae-summary-strip { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ====================================================================
+   Agent Evaluation Panel
+   ==================================================================== */
+.ae-section { width: 100%; }
+.panel-full { width: 100%; }
+
+/* Empty state */
+.ae-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  color: var(--text-secondary);
+  gap: 0.8rem;
+}
+.ae-empty-icon { font-size: 2.4rem; opacity: 0.5; }
+.ae-empty p { font-size: 0.88rem; }
+
+/* Summary strip */
+.ae-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.2rem;
+  padding: 0.8rem;
+  border-radius: 10px;
+  background: rgba(118, 185, 0, 0.04);
+  border: 1px solid rgba(118, 185, 0, 0.12);
+}
+.ae-summary-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+.ae-summary-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+.ae-summary-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Agent cards grid */
+.ae-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 0.8rem;
+}
+
+/* Individual agent card */
+.ae-card {
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: border-color 0.3s, box-shadow 0.3s, transform 0.25s;
+}
+.ae-card:hover {
+  border-color: rgba(118, 185, 0, 0.3);
+  box-shadow: 0 0 20px rgba(118, 185, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.ae-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+}
+.ae-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.ae-state-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.2;
+}
+.ae-strategy-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Grade badge */
+.ae-grade {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+.grade-s { background: rgba(118, 185, 0, 0.18); color: #76b900; }
+.grade-a { background: rgba(0, 212, 170, 0.16); color: #00d4aa; }
+.grade-b { background: rgba(68, 136, 204, 0.16); color: #4488cc; }
+.grade-c { background: rgba(212, 160, 23, 0.16); color: #d4a017; }
+.grade-d { background: rgba(255, 68, 68, 0.16); color: #ff4444; }
+
+/* Resilience ring */
+.ae-resilience {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+.ae-ring {
+  width: 44px;
+  height: 44px;
+  transform: rotate(-90deg);
+}
+.ae-ring circle:first-child { opacity: 0.5; }
+.ae-ring-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* Metrics */
+.ae-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.6rem;
+}
+.ae-metric-row {
+  display: grid;
+  grid-template-columns: 110px 1fr 60px;
+  align-items: center;
+  gap: 0.5rem;
+}
+.ae-metric-label {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.ae-metric-val {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Mini progress bar */
+.ae-bar-track {
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+.ae-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Strategy tags */
+.ae-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+.ae-tag {
+  font-size: 0.62rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 20px;
+  border: 1px solid;
+  color: var(--text-secondary);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* Responsive */
+@media (max-width: 1080px) {
+  .ae-grid { grid-template-columns: repeat(2, 1fr); }
+  .ae-summary-strip { grid-template-columns: repeat(2, 1fr); }
 }

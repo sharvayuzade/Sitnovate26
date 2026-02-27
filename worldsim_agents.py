@@ -30,6 +30,8 @@ class StrategyAnalyzer:
     """Analyze the dataset and classify each state's dominant strategy."""
 
     def __init__(self, world: World):
+        if world is None:
+            raise ValueError("StrategyAnalyzer requires a valid World instance.")
         self.world = world
 
     def classify_state(self, state: str) -> Dict[str, Any]:
