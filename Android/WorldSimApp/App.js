@@ -8,6 +8,40 @@ import { COLORS, API_BASE } from './src/config';
 
 const { width } = Dimensions.get('window');
 
+const MOCK_SIMULATION_DATA = {
+  summary: {
+    total_states: 10,
+    total_data_points: 10000,
+    avg_welfare_index: 72.8,
+    dominant_strategy: 'Balanced Growth',
+  },
+  strategy_mix: {
+    'Balanced Growth': 4,
+    'Export Push': 2,
+    'Green Transition': 2,
+    'Welfare First': 2,
+  },
+  resilience_ranking: [
+    { state: 'Maharashtra', resilience_score: 86.2 },
+    { state: 'Karnataka', resilience_score: 83.7 },
+    { state: 'Tamil Nadu', resilience_score: 81.9 },
+    { state: 'Gujarat', resilience_score: 79.8 },
+    { state: 'Telangana', resilience_score: 78.1 },
+  ],
+  states: [
+    { state: 'Maharashtra', grade: 'S', resilience_score: 86.2, welfare_index: 78.6, avg_gdp_growth: 9.2, trade_efficiency: 0.89, strategy: 'Balanced Growth', net_migration: 162000, inequality_index: 0.34 },
+    { state: 'Karnataka', grade: 'A', resilience_score: 83.7, welfare_index: 76.8, avg_gdp_growth: 8.7, trade_efficiency: 0.86, strategy: 'Export Push', net_migration: 138000, inequality_index: 0.33 },
+    { state: 'Tamil Nadu', grade: 'A', resilience_score: 81.9, welfare_index: 75.4, avg_gdp_growth: 8.4, trade_efficiency: 0.84, strategy: 'Balanced Growth', net_migration: 119000, inequality_index: 0.32 },
+    { state: 'Gujarat', grade: 'A', resilience_score: 79.8, welfare_index: 73.6, avg_gdp_growth: 8.1, trade_efficiency: 0.87, strategy: 'Export Push', net_migration: 103000, inequality_index: 0.35 },
+    { state: 'Telangana', grade: 'B', resilience_score: 78.1, welfare_index: 72.7, avg_gdp_growth: 7.9, trade_efficiency: 0.81, strategy: 'Green Transition', net_migration: 94000, inequality_index: 0.31 },
+    { state: 'Delhi', grade: 'B', resilience_score: 76.4, welfare_index: 74.1, avg_gdp_growth: 7.5, trade_efficiency: 0.8, strategy: 'Welfare First', net_migration: 88000, inequality_index: 0.36 },
+    { state: 'West Bengal', grade: 'B', resilience_score: 74.9, welfare_index: 70.8, avg_gdp_growth: 7.1, trade_efficiency: 0.77, strategy: 'Balanced Growth', net_migration: 61000, inequality_index: 0.34 },
+    { state: 'Rajasthan', grade: 'C', resilience_score: 72.2, welfare_index: 69.3, avg_gdp_growth: 6.8, trade_efficiency: 0.74, strategy: 'Green Transition', net_migration: 42000, inequality_index: 0.37 },
+    { state: 'Uttar Pradesh', grade: 'C', resilience_score: 69.8, welfare_index: 66.5, avg_gdp_growth: 6.4, trade_efficiency: 0.71, strategy: 'Welfare First', net_migration: 15000, inequality_index: 0.39 },
+    { state: 'Bihar', grade: 'D', resilience_score: 64.6, welfare_index: 62.1, avg_gdp_growth: 5.8, trade_efficiency: 0.65, strategy: 'Balanced Growth', net_migration: -12000, inequality_index: 0.41 },
+  ],
+};
+
 /* ───────────────────── SPLASH SCREEN ───────────────────── */
 function SplashView({ onDone }) {
   const [progress, setProgress] = useState(0);
@@ -71,25 +105,29 @@ function DashboardTab({ apiBase, onSimulationData }) {
   const [seed, setSeed] = useState('42');
 
   const runSim = async () => {
-    setLoading(true); setError(null);
-    try {
-      const res = await fetch(`${apiBase}/api/simulate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ seed: parseInt(seed) || 42, tick_start: 1, tick_end: 120 }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const payload = await res.json();
-      setData(payload);
-      onSimulationData(payload);
-    } catch (e) { setError(e.message); }
-    setLoading(false);
+    setLoading(true);
+    setError(null);
+    setTimeout(() => {
+      setData(MOCK_SIMULATION_DATA);
+      onSimulationData(MOCK_SIMULATION_DATA);
+      setLoading(false);
+    }, 700);
   };
 
   return (
     <ScrollView style={s.tabContent} contentContainerStyle={{ paddingBottom: 40 }}>
       <Text style={s.sectionTitle}>🚀 Simulation Dashboard</Text>
       <Text style={s.desc}>Run the WorldSim engine on your Indian state dataset (10,000 rows, 10 states, 120 ticks).</Text>
+
+      <View style={s.heroCard}>
+        <Text style={s.heroTitle}>Mobile Control Center</Text>
+        <Text style={s.heroSub}>Launch simulation, monitor resilience, and inspect state agents from one screen.</Text>
+        <View style={s.heroStats}>
+          <View style={s.heroStatPill}><Text style={s.heroStatLabel}>States</Text><Text style={s.heroStatValue}>{data?.summary?.total_states || 10}</Text></View>
+          <View style={s.heroStatPill}><Text style={s.heroStatLabel}>Ticks</Text><Text style={s.heroStatValue}>120</Text></View>
+          <View style={s.heroStatPill}><Text style={s.heroStatLabel}>Agents</Text><Text style={s.heroStatValue}>{data?.states?.length || 0}</Text></View>
+        </View>
+      </View>
 
       <View style={s.card}>
         <Text style={s.cardLabel}>Seed</Text>
@@ -200,19 +238,10 @@ function AgentsTab({ apiBase, simulationData, onSimulationData }) {
   const loadAgents = async () => {
     setLoading(true);
     setError('');
-    try {
-      const res = await fetch(`${apiBase}/api/simulate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ seed: 42, tick_start: 1, tick_end: 120 }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const payload = await res.json();
-      onSimulationData(payload);
-    } catch (e) {
-      setError(e.message);
-    }
-    setLoading(false);
+    setTimeout(() => {
+      onSimulationData(MOCK_SIMULATION_DATA);
+      setLoading(false);
+    }, 500);
   };
 
   const states = simulationData?.states || [];
@@ -244,6 +273,11 @@ function AgentsTab({ apiBase, simulationData, onSimulationData }) {
             <View style={[s.gradeBadge, { backgroundColor: gradeColor(agent.grade) }]}>
               <Text style={s.gradeText}>{agent.grade}</Text>
             </View>
+          </View>
+
+          <View style={s.agentMetaRow}>
+            <Text style={s.agentMetaText}>Migration: {agent.net_migration || 0}</Text>
+            <Text style={s.agentMetaText}>Inequality: {agent.inequality_index?.toFixed?.(2) ?? '0.00'}</Text>
           </View>
 
           <View style={s.metricRow}>
@@ -439,10 +473,15 @@ export default function App() {
 
       {/* Header */}
       <View style={s.header}>
-        <Text style={s.headerIcon}>🌍</Text>
-        <View>
-          <Text style={s.headerTitle}>WorldSim</Text>
-          <Text style={s.headerSub}>India Resource Nexus</Text>
+        <View style={s.headerLeft}>
+          <Text style={s.headerIcon}>🌍</Text>
+          <View>
+            <Text style={s.headerTitle}>WorldSim</Text>
+            <Text style={s.headerSub}>India Resource Nexus</Text>
+          </View>
+        </View>
+        <View style={s.headerBadge}>
+          <Text style={s.headerBadgeText}>{activeTab.toUpperCase()}</Text>
         </View>
       </View>
 
@@ -470,27 +509,39 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.bg },
 
   /* Header */
-  header: { flexDirection: 'row', alignItems: 'center', paddingTop: Platform.OS === 'web' ? 16 : 50, paddingBottom: 12, paddingHorizontal: 20, backgroundColor: COLORS.surface, borderBottomWidth: 1, borderBottomColor: COLORS.cardBorder },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: Platform.OS === 'web' ? 16 : 50, paddingBottom: 12, paddingHorizontal: 16, backgroundColor: COLORS.surface, borderBottomWidth: 1, borderBottomColor: COLORS.cardBorder },
+  headerLeft: { flexDirection: 'row', alignItems: 'center' },
   headerIcon: { fontSize: 28, marginRight: 12 },
   headerTitle: { color: COLORS.accent, fontSize: 20, fontWeight: '800', letterSpacing: 1 },
   headerSub: { color: COLORS.textSecondary, fontSize: 11, marginTop: 1 },
+  headerBadge: { paddingHorizontal: 10, paddingVertical: 5, backgroundColor: COLORS.accentDim, borderRadius: 99, borderWidth: 1, borderColor: COLORS.cardBorder },
+  headerBadgeText: { color: COLORS.accent, fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
 
   /* Tab Bar */
-  tabBar: { flexDirection: 'row', backgroundColor: COLORS.surface, borderTopWidth: 1, borderTopColor: COLORS.cardBorder, paddingBottom: Platform.OS === 'web' ? 8 : 24, paddingTop: 8 },
-  tab: { flex: 1, alignItems: 'center', paddingVertical: 4 },
-  tabActive: {},
-  tabIcon: { fontSize: 20, opacity: 0.4, marginBottom: 2 },
+  tabBar: { flexDirection: 'row', backgroundColor: COLORS.surface, borderTopWidth: 1, borderTopColor: COLORS.cardBorder, paddingBottom: Platform.OS === 'web' ? 10 : 22, paddingTop: 8, paddingHorizontal: 6 },
+  tab: { flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 10, marginHorizontal: 2 },
+  tabActive: { backgroundColor: COLORS.accentDim },
+  tabIcon: { fontSize: 20, opacity: 0.5, marginBottom: 3 },
   tabIconActive: { opacity: 1 },
-  tabLabel: { fontSize: 10, color: COLORS.textMuted, fontWeight: '600' },
+  tabLabel: { fontSize: 11, color: COLORS.textMuted, fontWeight: '700' },
   tabLabelActive: { color: COLORS.accent },
 
   /* Content */
-  tabContent: { flex: 1, paddingHorizontal: 16, paddingTop: 16 },
+  tabContent: { flex: 1, paddingHorizontal: 12, paddingTop: 10 },
   sectionTitle: { color: COLORS.text, fontSize: 18, fontWeight: '700', marginBottom: 8, marginTop: 16 },
   desc: { color: COLORS.textSecondary, fontSize: 13, lineHeight: 20, marginBottom: 8 },
 
+  /* Hero */
+  heroCard: { backgroundColor: COLORS.surface, borderRadius: 14, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: COLORS.cardBorder },
+  heroTitle: { color: COLORS.text, fontSize: 16, fontWeight: '800', marginBottom: 4 },
+  heroSub: { color: COLORS.textSecondary, fontSize: 12, lineHeight: 18, marginBottom: 10 },
+  heroStats: { flexDirection: 'row', gap: 6 },
+  heroStatPill: { flex: 1, backgroundColor: COLORS.card, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 6, alignItems: 'center' },
+  heroStatLabel: { color: COLORS.textMuted, fontSize: 10, fontWeight: '700' },
+  heroStatValue: { color: COLORS.accent, fontSize: 15, fontWeight: '800', marginTop: 2 },
+
   /* Card */
-  card: { backgroundColor: COLORS.card, borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: COLORS.cardBorder },
+  card: { backgroundColor: COLORS.card, borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: COLORS.cardBorder },
   cardLabel: { color: COLORS.accent, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
 
   /* Input */
@@ -507,15 +558,15 @@ const s = StyleSheet.create({
   errorText: { color: COLORS.danger, fontSize: 13 },
 
   /* KPI */
-  kpiRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
-  kpiCard: { flex: 1, backgroundColor: COLORS.card, borderRadius: 12, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: COLORS.cardBorder },
+  kpiRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  kpiCard: { flex: 1, backgroundColor: COLORS.card, borderRadius: 12, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: COLORS.cardBorder },
   kpiValue: { color: COLORS.text, fontSize: 22, fontWeight: '800', marginBottom: 2 },
   kpiLabel: { color: COLORS.textMuted, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' },
 
   /* Ranking */
   rankRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, paddingHorizontal: 4 },
   rankNum: { color: COLORS.accent, fontWeight: '800', fontSize: 14, width: 30 },
-  rankState: { color: COLORS.text, fontWeight: '600', fontSize: 13, width: 110 },
+  rankState: { color: COLORS.text, fontWeight: '600', fontSize: 12, width: 96 },
   rankBar: { flex: 1, height: 8, backgroundColor: COLORS.bg, borderRadius: 4, marginHorizontal: 8, overflow: 'hidden' },
   rankFill: { height: '100%', backgroundColor: COLORS.accent, borderRadius: 4 },
   rankScore: { color: COLORS.textSecondary, fontSize: 12, fontWeight: '600', width: 36, textAlign: 'right' },
@@ -527,7 +578,7 @@ const s = StyleSheet.create({
   stratCount: { color: COLORS.textMuted, fontSize: 12 },
 
   /* State Card */
-  stateCard: { backgroundColor: COLORS.card, borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: COLORS.cardBorder },
+  stateCard: { backgroundColor: COLORS.card, borderRadius: 12, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: COLORS.cardBorder },
   stateHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   stateName: { color: COLORS.text, fontSize: 16, fontWeight: '700' },
   gradeBadge: { borderRadius: 6, paddingHorizontal: 10, paddingVertical: 3 },
@@ -538,8 +589,10 @@ const s = StyleSheet.create({
   stratTag: { color: COLORS.accentSecondary, fontSize: 12, fontWeight: '600' },
 
   /* Agents */
-  agentCard: { backgroundColor: COLORS.card, borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: COLORS.cardBorder },
+  agentCard: { backgroundColor: COLORS.card, borderRadius: 12, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: COLORS.cardBorder },
   agentHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  agentMetaRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  agentMetaText: { color: COLORS.textSecondary, fontSize: 11, fontWeight: '600' },
   agentBarTrack: { width: '100%', height: 8, borderRadius: 99, backgroundColor: COLORS.bg, marginTop: 2, marginBottom: 8, overflow: 'hidden' },
   agentBarFill: { height: '100%', backgroundColor: COLORS.accent },
 
