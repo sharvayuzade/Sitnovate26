@@ -1,21 +1,45 @@
 # 🌍 WorldSim — Adaptive Resource Scarcity & Agent Strategy Simulator
 <img width="2737" height="1410" alt="image" src="https://github.com/user-attachments/assets/e8308afd-1b1a-4b36-82f9-acb639f9e5ad" />
 
-> **A multi-agent reinforcement learning simulation of regional resource dynamics, inter-region negotiation, and emergent survival strategies.**
+> **A data-driven simulation of Indian state resource dynamics, inter-state trade, and emergent survival strategies, powered by a 10,000-row synthetic dataset and a FastAPI + React frontend.**
 
 ---
 
 ## 📌 Overview
 
-WorldSim is a simulation engine that models a set of geographically distinct **regions**, each endowed with finite, depletable resources — **water**, **food**, **energy**, and **land**. Autonomous AI agents govern each region and must independently learn strategies for:
+WorldSim is a simulation and analytics platform that models **10 Indian states**, each tracked across **120 simulation ticks** in a 10,000-row synthetic dataset. The platform analyses:
 
-- **Survival** — maintaining minimum resource thresholds to avoid collapse
-- **Growth** — expanding productive capacity over simulation cycles
-- **Negotiation** — forming, sustaining, and breaking trade relationships with other regions
+- **Resource Dynamics** — per-state supply, generation, and consumption of water, food, and energy
+- **Economic Indicators** — state GDP, GDP growth rate, welfare index, and inequality index
+- **Trade Activity** — bid/ask order matching, execution rates, and trade volumes by resource type
+- **Migration Flows** — inter-state migration in/out, net migration balance
+- **Climate Resilience** — impact of heatwaves, droughts, floods, and cyclones on state resources
 
-Agents are not pre-programmed with fixed rules. Instead, they learn via **reinforcement learning (RL)**, adapting their strategies in response to the evolving world state, resource scarcity, climatic shocks, and the behavior of neighboring agents.
+The **StrategyAnalyzer** classifies each state's dominant behavior pattern (Trade-Heavy, Growth-Focused, Welfare-Priority, etc.) from the dataset, and an optional **Ollama-powered LLM** generates natural-language briefings from the simulation results.
 
-The simulation is designed to surface **emergent behavior** — strategies that arise organically — and to enable deep analysis of which approaches prove sustainable, which collapse, and why.
+**Simulated states:** Bihar, Gujarat, Karnataka, Madhya Pradesh, Maharashtra, Punjab, Rajasthan, Tamil Nadu, Uttar Pradesh, West Bengal
+
+---
+
+## 🏗️ Architecture
+
+```
+Sitnovate26/
+├── worldsim_engine.py                       # World data engine: loads CSV, aggregates snapshots & time series
+├── worldsim_agents.py                       # StrategyAnalyzer: classifies state strategies from dataset
+├── worldsim_api.py                          # FastAPI backend: REST endpoints, MongoDB persistence, Ollama integration
+├── worldsim_dashboard.py                    # Gradio dashboard: interactive simulation UI with Ollama AI tab
+├── worldsim_viz.py                          # Matplotlib/Plotly visualization: maps, charts, trade networks
+├── WorldSim.ipynb                           # Jupyter notebook: exploratory analysis and demos
+├── worldsim_synthetic_dataset_10000_rows.csv  # Synthetic dataset: 10 states × 120 ticks × trade orders
+└── worldsim-frontend/                       # React + Vite frontend: recharts, react-simple-maps, three.js
+    ├── src/
+    │   ├── App.jsx
+    │   ├── components/
+    │   └── ...
+    ├── package.json
+    └── vite.config.js
+```
 
 ---
 
@@ -41,14 +65,15 @@ ollama run gemma3:4b
 Backend:
 
 ```cmd
-cd "E:\Sharvayu data\Malware\Symbiosis Nagpur SIT\Hackathons\Sitnovate26\Sitnovate26"
-C:/Users/sharv/AppData/Local/Programs/Python/Python39/python.exe -m uvicorn worldsim_api:app --host 127.0.0.1 --port 8000
+cd Sitnovate26
+python -m uvicorn worldsim_api:app --host 127.0.0.1 --port 8000
 ```
 
 Frontend:
 
 ```cmd
-cd "E:\Sharvayu data\Malware\Symbiosis Nagpur SIT\Hackathons\Sitnovate26\Sitnovate26\worldsim-frontend"
+cd Sitnovate26/worldsim-frontend
+npm install
 npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
@@ -65,8 +90,10 @@ Expected response includes:
 
 ### 4) API endpoints used by the UI
 
+- `GET /api/health` → service health, Ollama reachability, and MongoDB status
 - `GET /api/ollama/status` → checks Ollama server and lists pulled models
-- `POST /api/ollama/analyze` → generates strategic AI briefing from simulation data
+- `POST /api/simulate` → runs dataset analysis for a tick range; returns state metrics, strategy classifications, time series, bid/ask data, and resource consumption
+- `POST /api/ollama/analyze` → generates a strategic AI briefing from simulation data
 
 ### 5) Optional: custom Ollama host
 
@@ -82,14 +109,14 @@ set OLLAMA_BASE_URL=http://127.0.0.1:11434
 
 ```cmd
 powershell -Command "$conn = Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue; if ($conn) { Stop-Process -Id $conn.OwningProcess -Force }"
-C:/Users/sharv/AppData/Local/Programs/Python/Python39/python.exe -m uvicorn worldsim_api:app --host 127.0.0.1 --port 8000
+python -m uvicorn worldsim_api:app --host 127.0.0.1 --port 8000
 ```
 
 **B) `npm run dev` exits / port 5173 busy**
 
 ```cmd
 powershell -Command "$conn = Get-NetTCPConnection -LocalPort 5173 -State Listen -ErrorAction SilentlyContinue; if ($conn) { Stop-Process -Id $conn.OwningProcess -Force }"
-cd "E:\Sharvayu data\Malware\Symbiosis Nagpur SIT\Hackathons\Sitnovate26\Sitnovate26\worldsim-frontend"
+cd worldsim-frontend
 npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
@@ -119,128 +146,101 @@ curl http://127.0.0.1:8000/api/ollama/status
 
 | Feature | Description |
 |---|---|
-| 🗺️ **Multi-Region World** | Configurable number of regions, each with unique resource profiles and starting conditions |
-| 📉 **Resource Depletion** | Resources deplete over time based on agent consumption patterns and population demand |
-| 🌩️ **Climatic Events** | Random and semi-random events (droughts, floods, heatwaves, fertile seasons) alter resource availability |
-| 🤝 **Trade & Diplomacy** | Agents can propose, accept, or reject bilateral/multilateral trade agreements |
-| 🧠 **RL-Driven Agents** | Each regional agent learns via a reward signal tied to survival, growth, and stability metrics |
-| 📊 **Rich Visualization** | Real-time dashboards showing world state, resource flows, agent decisions, and historical trends |
-| 🔬 **Post-Simulation Analysis** | Automated reports on emergent strategies, collapse events, and sustainability metrics |
-
----
-
-## 🏗️ Architecture
-
-```
-WorldSim/
-├── engine/
-│   ├── world.py              # World state management, region registry
-│   ├── region.py             # Region class: resources, population, history
-│   ├── resource_model.py     # Depletion rates, regeneration, climatic modifiers
-│   └── event_engine.py       # Climatic event scheduler and effects
-│
-├── agents/
-│   ├── base_agent.py         # Abstract RL agent interface
-│   ├── rl_agent.py           # PPO/DQN-based regional governor agent
-│   ├── negotiation.py        # Inter-agent trade proposal and response logic
-│   └── reward.py             # Reward function definitions
-│
-├── simulation/
-│   ├── runner.py             # Simulation loop orchestrator
-│   ├── config.py             # World and simulation configuration
-│   └── logger.py             # Timestamped state logging per cycle
-│
-├── visualization/
-│   ├── dashboard.py          # Real-time world state dashboard (e.g., Streamlit/Plotly)
-│   ├── resource_charts.py    # Per-region resource trend charts
-│   ├── trade_graph.py        # Dynamic trade relationship network graph
-│   └── event_timeline.py     # Climatic event timeline overlay
-│
-├── analysis/
-│   ├── strategy_analyzer.py  # Classify and compare emergent agent strategies
-│   ├── collapse_detector.py  # Identify and explain regional collapse events
-│   └── report_generator.py  # Generate final simulation analysis reports
-│
-├── tests/
-│   └── ...                   # Unit and integration tests
-│
-├── requirements.txt
-├── config.yaml               # Default simulation configuration
-└── README.md
-```
+| 🗺️ **10 Indian States** | Bihar, Gujarat, Karnataka, Madhya Pradesh, Maharashtra, Punjab, Rajasthan, Tamil Nadu, Uttar Pradesh, West Bengal |
+| 📊 **10,000-Row Synthetic Dataset** | 10 states × 120 ticks × multiple trade orders per tick |
+| 📉 **Resource Analytics** | Per-state water, food, and energy supply, generation, and consumption tracked across all ticks |
+| 💹 **Trade Order Book** | Bid/ask order matching with execution rates, prices, and volumes broken down by resource type and state |
+| 🏛️ **Economic Indicators** | State GDP, GDP growth rate, welfare index, inequality index, and migration flows |
+| 🌩️ **Climatic Events** | Heatwave, Drought, Flood, and Cyclone events with per-tick shock intensity scores |
+| 🧠 **Strategy Classification** | Data-driven tagging: Trade-Heavy, Resource-Conservative, Growth-Focused, Welfare-Priority, Migration-Attracting, Climate-Resilient |
+| 🤖 **AI Briefings** | Optional Ollama LLM integration generates natural-language executive summaries from simulation data |
+| 🖥️ **React Frontend** | Interactive dashboard built with React 19, Vite, Recharts, react-simple-maps, and Three.js |
+| 📡 **FastAPI Backend** | REST API with optional MongoDB persistence for simulation run history and AI analyses |
 
 ---
 
 ## ⚙️ Simulation Mechanics
 
-### Resources
-Each region tracks four core resources with per-cycle depletion and optional regeneration:
+### Dataset Schema
 
-| Resource | Depleted By | Regenerated By |
+The dataset (`worldsim_synthetic_dataset_10000_rows.csv`) contains the following columns per row:
+
+| Column | Type | Description |
 |---|---|---|
-| 💧 Water | Population consumption, agriculture | Rainfall events, river trade |
-| 🌾 Food | Population consumption | Farming investment, trade imports |
-| ⚡ Energy | Industrial production, heating/cooling | Renewable investment, trade imports |
-| 🏔️ Land | Urban/agricultural expansion | Not regenerated; finite |
+| `tick` | int | Simulation time step (1–120) |
+| `state` | str | Indian state name |
+| `population` | float | State population at this tick |
+| `water_supply` / `food_supply` / `energy_supply` | float | Resource stock levels |
+| `water_generated` / `food_generated` / `energy_generated` | float | Per-tick resource generation |
+| `water_consumed` / `food_consumed` / `energy_consumed` | float | Per-tick resource consumption |
+| `state_gdp` | float | State GDP value |
+| `gdp_growth_rate` | float | GDP growth rate (%) |
+| `welfare_index` | float | Welfare score (0–1) |
+| `inequality_index` | float | Inequality score (0–1) |
+| `migration_in` / `migration_out` | int | People migrating into/out of the state |
+| `order_type` | str | Trade order type: `bid` or `ask` |
+| `resource_type` | str | Resource being traded: Water, Food, or Energy |
+| `trade_quantity` | float | Quantity in the trade order |
+| `trade_price` | float | Price per unit in the trade order |
+| `trade_executed` | int | Whether the trade was executed (0 or 1) |
+| `climate_event` | str | Climate event at this tick: None, Heatwave, Drought, Flood, Cyclone |
+| `shock_intensity` | float | Severity of the climate event (0–1) |
 
-### Agent Action Space
-At each simulation cycle, an agent chooses from actions including:
-- Allocate resources to **consumption**, **production**, or **storage**
-- **Invest** in technology to improve efficiency or unlock renewables
-- **Propose a trade** to another region (resource type, quantity, duration)
-- **Accept or reject** an incoming trade proposal
-- **Embargo** a hostile region
+### Resources
+Each state tracks three core resources:
 
-### Reward Signal
-Agents are rewarded for:
-- ✅ Maintaining resources above survival thresholds
-- ✅ Population growth and stability
-- ✅ Positive trade balance over time
-- ✅ Avoiding resource collapse
-- ❌ Penalized for resource depletion, failed negotiations, and regional collapse
+| Resource | Depleted By | Generated By |
+|---|---|---|
+| 💧 Water | Population consumption, agriculture | Rainfall, river systems |
+| 🌾 Food | Population consumption | Farming, trade imports |
+| ⚡ Energy | Industrial production, heating/cooling | Power generation, trade imports |
 
 ### Climatic Events
-Events fire stochastically each cycle with configurable probability and severity:
-- **Drought** — reduces water and food by a regional modifier
-- **Flood** — destroys land and food stocks; may boost water temporarily
-- **Heatwave** — spikes energy demand
-- **Fertile Season** — temporary food and water surplus
-- **Resource Windfall** — discovery of new energy or mineral deposits
+Events are recorded per tick with a shock intensity score:
+- **Heatwave** — spikes energy demand, stresses water supply
+- **Drought** — reduces water and food availability
+- **Flood** — disrupts food stocks and energy supply
+- **Cyclone** — broad resource and infrastructure disruption
+
+### Strategy Classification
+The `StrategyAnalyzer` derives dominant strategy tags per state from the dataset:
+
+| Tag | Criterion |
+|---|---|
+| **Trade-Heavy** | Trade execution rate > 50% |
+| **Resource-Conservative** | Total consumption < 85% of total generation |
+| **Growth-Focused** | Average GDP growth rate > 3.0% |
+| **Welfare-Priority** | Average welfare index > 0.5 |
+| **Migration-Attracting** | Positive cumulative net migration |
+| **Climate-Resilient** | Welfare > 0.4 despite average shock intensity > 0.4 |
+
+A **resilience score** is computed per state as a weighted composite of welfare (35%), GDP growth (25%), trade execution rate (20%), and equity — defined as `1 - inequality_index` — (20%).
 
 ---
 
-## 🤖 Reinforcement Learning Details
+## 📊 Visualization (`worldsim_viz.py`)
 
-- **Algorithm**: Proximal Policy Optimization (PPO) as the default; configurable to DQN or A3C
-- **State Space**: Normalized vector of [own resources, neighbor resources (visible), recent events, trade history, cycle number]
-- **Action Space**: Discrete + Continuous hybrid (resource allocation continuous; trade/diplomacy discrete)
-- **Training**: Agents train in parallel across regions; shared experience replay optional
-- **Generalization**: Agents are evaluated on held-out world configurations to test strategy transferability
+The visualization module provides rich matplotlib and Plotly charts:
 
----
-
-## 📊 Visualization
-
-The visualization layer is a first-class component of WorldSim:
-
-1. **World Map View** — Color-coded map showing real-time resource health of each region
-2. **Resource Timelines** — Per-region historical charts of all four resources
-3. **Trade Network Graph** — Live force-directed graph of active trade relationships
-4. **Event Timeline** — Chronological strip of climatic events overlaid on resource curves
-5. **Agent Decision Heatmap** — Shows action frequency distributions per agent per phase
-6. **Collapse & Survival Report** — Visual summary of which regions survived, when, and why
+1. **World Map View** — Color-coded regional resource health overview
+2. **Resource Time Series** — Per-state historical charts for water, food, and energy
+3. **Population & GDP Trends** — State-level population and economic growth over ticks
+4. **Trade Network Graph** — Force-directed graph of active trade relationships (NetworkX + Matplotlib)
+5. **Trade Volume Chart** — Per-tick bid/ask volumes and price trends
+6. **Strategy Heatmap** — State × strategy tag matrix showing classification scores
 
 ---
 
 ## 🔬 Analysis & Findings
 
-After each simulation run, the analysis module generates a structured report covering:
+After a simulation run, the API and StrategyAnalyzer provide:
 
-- **Emergent Strategy Clusters**: Did agents converge on hoarding, trade-dependency, or self-sufficiency?
-- **Collapse Autopsy**: What sequence of events and decisions led to regional collapse?
-- **Trade Network Stability**: Which trade partnerships lasted? Which were exploitative?
-- **Climate Resilience**: Which strategies survived repeated climatic shocks?
-- **Real-World Parallels**: Commentary mapping simulation outcomes to documented real-world resource conflict patterns (e.g., water wars, energy embargoes, food aid dependency)
+- **Strategy Mix** — Distribution of dominant strategies across all 10 states
+- **Resilience Ranking** — States ranked by composite resilience score with strategy tags
+- **Trade Analytics** — Execution rates, volumes by resource type and state, bid/ask breakdowns
+- **Climate Summary** — Event frequency counts and average shock intensity per event type
+- **Global Time Series** — Total population, GDP, welfare, and trade volume aggregated across all states per tick
+- **Critical vs Healthy States** — States flagged as critical (welfare < 0.3 or negative GDP growth) at the final tick
 
 ---
 
@@ -252,29 +252,30 @@ WorldSim follows a structured SDLC to ensure quality, traceability, and iterativ
 
 | Item | Detail |
 |---|---|
-| **Project Goal** | Build a multi-agent RL simulation to model regional resource scarcity and emergent survival strategies |
-| **Scope** | Simulation engine, RL agents, trade/diplomacy logic, visualization dashboard, post-run analysis |
+| **Project Goal** | Build a data-driven simulation to model Indian state resource scarcity and emergent survival strategies |
+| **Scope** | Simulation engine, strategy analyzer, trade analytics, visualization dashboard, AI briefings |
 | **Timeline** | Sprint-based development aligned with Sitnovate 2026 Hackathon milestones |
-| **Team Roles** | RL Engineers, Backend Developers, Visualization Developers, QA & Testing |
-| **Tools & Stack** | Python 3.10+, Stable-Baselines3, Streamlit, Plotly, pytest, Git/GitHub |
-| **Risk Factors** | RL convergence instability, computational cost of multi-agent training, event randomness reproducibility |
+| **Team Roles** | Backend Developers, Frontend Developers, Data Engineers, Visualization Developers, QA & Testing |
+| **Tools & Stack** | Python 3.10+, FastAPI, React 19, Vite, Recharts, Pandas, NumPy, Matplotlib, Plotly, Gradio, Ollama, MongoDB |
+| **Risk Factors** | Dataset quality and coverage, Ollama model availability, MongoDB connectivity, frontend–backend CORS |
 
 ---
 
 ### Phase 2 — 📝 Requirements Analysis
 
 **Functional Requirements**
-- Simulate a configurable number of regions, each with four core resources (water, food, energy, land)
-- RL agents must learn resource allocation, trade, and diplomacy strategies autonomously
-- Climatic events must fire stochastically and alter regional resource availability
-- Visualization layer must display world state, trade networks, and event timelines in real time
-- Post-simulation analysis must classify emergent strategies and identify collapse events
+- Load and serve a 10,000-row synthetic dataset of 10 Indian states across 120 ticks
+- Classify each state's dominant strategy from dataset patterns (trade, growth, welfare, resilience)
+- Provide a REST API returning per-state snapshots, time series, trade analytics, and climate summaries
+- React frontend displays state metrics, charts, and trade order book data
+- Optional Ollama LLM integration generates natural-language briefings from simulation results
+- Optional MongoDB persistence stores simulation runs and AI analyses
 
 **Non-Functional Requirements**
-- Simulation must be deterministic when a fixed seed is provided (reproducibility)
-- Dashboard must render updates within one simulation cycle latency
-- Codebase must maintain >80% unit test coverage on core engine and agent logic
-- Configuration must be fully externalizable via `config.yaml` (no hardcoded simulation parameters)
+- API response for a full simulation must complete within a few seconds on standard hardware
+- Dataset loading is deterministic (CSV-backed, not stochastic)
+- CORS configured to allow frontend–backend communication on localhost
+- Configuration (seed, tick range) is fully parameterized via API request body
 
 ---
 
@@ -283,34 +284,34 @@ WorldSim follows a structured SDLC to ensure quality, traceability, and iterativ
 **High-Level Design**
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Simulation Runner                    │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
-│  │  World State │  │  RL Agents   │  │ Event Engine │  │
-│  │  (regions,   │◄─┤  (PPO/DQN)  ├─►│  (climatic   │  │
-│  │   resources) │  │              │  │   shocks)    │  │
-│  └──────┬───────┘  └──────┬───────┘  └──────────────┘  │
-│         │                 │                             │
-│         ▼                 ▼                             │
-│  ┌──────────────────────────────┐                       │
-│  │     Logger / State Store     │                       │
-│  └──────────────┬───────────────┘                       │
-└─────────────────┼───────────────────────────────────────┘
-                  │
-      ┌───────────┴──────────┐
-      ▼                      ▼
-┌──────────────┐    ┌─────────────────┐
-│ Visualization│    │ Analysis Module │
-│  Dashboard   │    │ (reports, stats)│
-└──────────────┘    └─────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│                   FastAPI Backend                        │
+│  ┌────────────────┐  ┌──────────────────┐               │
+│  │  World Engine  │  │ StrategyAnalyzer │               │
+│  │  (CSV loader,  │◄─┤ (classify states,│               │
+│  │  aggregation,  │  │  resilience rank)│               │
+│  │  time series)  │  └──────────────────┘               │
+│  └───────┬────────┘                                      │
+│          │  ┌────────────────┐  ┌─────────────────────┐ │
+│          └─►│  /api/simulate │  │ /api/ollama/analyze  │ │
+│             └───────┬────────┘  └──────────┬──────────┘ │
+└─────────────────────┼───────────────────────┼────────────┘
+                      │                       │
+          ┌───────────┴───────────┐    ┌──────┴──────┐
+          ▼                       ▼    ▼             ▼
+  ┌──────────────┐        ┌────────────┐   ┌──────────────┐
+  │ React/Vite   │        │  MongoDB   │   │ Ollama LLM   │
+  │  Frontend    │        │(optional)  │   │ (optional)   │
+  └──────────────┘        └────────────┘   └──────────────┘
 ```
 
-**Low-Level Design Highlights**
-- `Region` class encapsulates per-cycle resource deltas, population state, and trade history
-- `RLAgent` wraps Stable-Baselines3 policy with a custom observation/action space adapter
-- `NegotiationModule` implements a structured proposal–counter-proposal–accept/reject handshake
-- `EventEngine` uses a weighted random scheduler with per-event severity distributions
-- `Logger` writes timestamped JSON snapshots for full post-run replay
+**Component Descriptions**
+- `worldsim_engine.py` — `World` class loads CSV, indexes by `(tick, state)`, provides `state_snapshot`, `state_series`, `global_series`, `trade_summary`, and `climate_summary`
+- `worldsim_agents.py` — `StrategyAnalyzer` classifies states by tag and computes a composite resilience score
+- `worldsim_api.py` — FastAPI app with `/api/health`, `/api/ollama/status`, `/api/simulate`, and `/api/ollama/analyze` endpoints
+- `worldsim_dashboard.py` — Gradio-based interactive dashboard with simulation controls and an AI analyst tab
+- `worldsim_viz.py` — Matplotlib and Plotly chart functions for all visualizations
+- `worldsim-frontend/` — React 19 + Vite SPA consuming the FastAPI backend
 
 ---
 
@@ -320,19 +321,19 @@ Development is organized into modular sprints:
 
 | Sprint | Focus Area | Key Deliverables |
 |---|---|---|
-| **Sprint 1** | Core Engine | `world.py`, `region.py`, `resource_model.py` — basic resource depletion loop |
-| **Sprint 2** | Event System | `event_engine.py` — climatic event scheduler and effect application |
-| **Sprint 3** | RL Agents | `rl_agent.py`, `reward.py` — PPO agent with survival/growth reward signal |
-| **Sprint 4** | Trade & Diplomacy | `negotiation.py` — proposal handshake, trade acceptance logic |
-| **Sprint 5** | Visualization | `dashboard.py`, `resource_charts.py`, `trade_graph.py` — Streamlit/Plotly dashboards |
-| **Sprint 6** | Analysis | `strategy_analyzer.py`, `collapse_detector.py`, `report_generator.py` |
-| **Sprint 7** | Integration & Polish | End-to-end runner, config externalization, documentation |
+| **Sprint 1** | Dataset & Engine | `worldsim_engine.py` — CSV loader, World class, snapshot and time-series APIs |
+| **Sprint 2** | Strategy Analysis | `worldsim_agents.py` — StrategyAnalyzer with tag classification and resilience ranking |
+| **Sprint 3** | REST API | `worldsim_api.py` — FastAPI endpoints, bid/ask aggregation, resource consumption, MongoDB persistence |
+| **Sprint 4** | Visualization | `worldsim_viz.py` — world map, resource charts, trade network graph, strategy heatmap |
+| **Sprint 5** | Gradio Dashboard | `worldsim_dashboard.py` — interactive UI with Ollama AI analyst tab |
+| **Sprint 6** | React Frontend | `worldsim-frontend/` — SPA with recharts, react-simple-maps, and three.js globe |
+| **Sprint 7** | Ollama Integration | `/api/ollama/analyze` — LLM briefings with state-sanitized output |
+| **Sprint 8** | Integration & Polish | End-to-end testing, CORS configuration, documentation |
 
 **Coding Standards**
-- PEP 8 style enforced via `flake8`
-- Type hints required on all public functions
-- Docstrings follow Google style format
-- All simulation parameters sourced from `config.yaml` — no magic numbers in code
+- PEP 8 style enforced
+- Type hints on all public functions
+- Docstrings on all modules and classes
 
 ---
 
@@ -340,42 +341,40 @@ Development is organized into modular sprints:
 
 | Test Type | Scope | Tooling |
 |---|---|---|
-| **Unit Tests** | Resource depletion arithmetic, event effect calculations, reward function correctness | `pytest` |
-| **Integration Tests** | Agent–world interaction, trade handshake end-to-end, logger output validity | `pytest` |
-| **Determinism Tests** | Simulation produces identical output for identical seeds across runs | `pytest` |
-| **Performance Tests** | Simulation completes 500 cycles with 8 regions within acceptable wall-clock time | Manual / CI timer |
-| **Visualization Tests** | Dashboard renders without runtime errors on sample log data | Manual smoke test |
-
-Run all tests:
-```bash
-pytest tests/ -v --tb=short
-```
-
-**Coverage Target**: ≥ 80% on `engine/`, `agents/`, and `simulation/` modules.
+| **Unit Tests** | Engine snapshot aggregation, strategy tag logic, resilience scoring | `pytest` |
+| **Integration Tests** | API endpoint responses with sample dataset, MongoDB insert/retrieve | `pytest` |
+| **Determinism Tests** | Same seed + tick range produces identical API response | `pytest` |
+| **Performance Tests** | Full `/api/simulate` call completes within acceptable time | Manual / CI timer |
+| **Frontend Tests** | Dashboard renders without runtime errors on sample API response | Manual smoke test |
 
 ---
 
 ### Phase 6 — 🚢 Deployment
 
-WorldSim is primarily a research simulation tool deployed locally or on a shared compute node:
-
 **Local Deployment**
 ```bash
 git clone https://github.com/sharvayuzade/Sitnovate26.git
 cd Sitnovate26
-pip install -r requirements.txt
-python simulation/runner.py --config config.yaml --cycles 500 --regions 8
+pip install fastapi uvicorn numpy pandas
+python -m uvicorn worldsim_api:app --host 127.0.0.1 --port 8000
 ```
 
-**Dashboard Deployment**
+**Frontend Deployment**
 ```bash
-streamlit run visualization/dashboard.py
+cd worldsim-frontend
+npm install
+npm run dev
+```
+
+**Gradio Dashboard**
+```bash
+pip install gradio pandas matplotlib plotly networkx
+python worldsim_dashboard.py
 ```
 
 **CI/CD Pipeline (GitHub Actions)**
-- On every pull request: run `flake8` lint check + full `pytest` suite
-- On merge to `main`: generate a sample simulation report as a build artifact
-- Environment: Python 3.10, Ubuntu latest runner
+- On every pull request: run lint check + tests
+- Environment: Python 3.10, Node.js 20, Ubuntu latest runner
 
 ---
 
@@ -384,14 +383,14 @@ streamlit run visualization/dashboard.py
 | Activity | Frequency | Owner |
 |---|---|---|
 | Bug triage and hotfixes | As needed | All team members |
-| RL hyperparameter tuning | Per experiment run | RL Engineers |
-| New climatic event types | Feature sprints | Backend Developers |
-| Dashboard UX improvements | Feature sprints | Visualization Developers |
-| Dependency upgrades (SB3, Streamlit) | Quarterly | Team Lead |
+| Dataset refresh and expansion | Per experiment run | Data Engineers |
+| New strategy classification tags | Feature sprints | Backend Developers |
+| Dashboard UX improvements | Feature sprints | Frontend Developers |
+| Dependency upgrades (FastAPI, React, Vite) | Quarterly | Team Lead |
 | Post-hackathon community contributions | Open | Community / Contributors |
 
 **Versioning Strategy**: Semantic versioning (`MAJOR.MINOR.PATCH`) tracked via Git tags.  
-**Feedback Loop**: Simulation analysis findings feed back into reward function design and event probability tuning.
+**Feedback Loop**: Strategy analysis findings feed back into dataset generation parameters and classification thresholds.
 
 ---
 
@@ -399,67 +398,79 @@ streamlit run visualization/dashboard.py
 
 ### Prerequisites
 - Python 3.10+
-- `pip` or `conda`
+- Node.js 18+ and npm
+- (Optional) [Ollama](https://ollama.com/) for AI briefings
+- (Optional) MongoDB for run persistence
 
 ### Installation
 
 ```bash
 git clone https://github.com/sharvayuzade/Sitnovate26.git
 cd Sitnovate26
-pip install -r requirements.txt
+pip install fastapi uvicorn numpy pandas matplotlib plotly networkx
 ```
 
-### Running a Simulation
+> **Note:** The backend requires `worldsim_synthetic_dataset_10000_rows.csv` to be present in the project root directory (included in the repository).
+
+### Running the Backend API
 
 ```bash
-python simulation/runner.py --config config.yaml --cycles 500 --regions 8
+python -m uvicorn worldsim_api:app --host 127.0.0.1 --port 8000
 ```
 
-### Launching the Dashboard
+### Running the React Frontend
 
 ```bash
-streamlit run visualization/dashboard.py
+cd worldsim-frontend
+npm install
+npm run dev
 ```
 
-### Running Analysis on a Saved Run
+Open [http://127.0.0.1:5173](http://127.0.0.1:5173) in your browser.
+
+### Running the Gradio Dashboard
 
 ```bash
-python analysis/report_generator.py --run-log logs/run_20260226.json
+pip install gradio matplotlib plotly networkx pandas
+python worldsim_dashboard.py
+```
+
+Open [http://127.0.0.1:7860](http://127.0.0.1:7860) in your browser.
+
+### Running the Jupyter Notebook
+
+```bash
+pip install jupyter numpy pandas matplotlib plotly networkx
+jupyter notebook WorldSim.ipynb
 ```
 
 ---
 
-## 🛠️ Configuration (`config.yaml`)
+## 🛠️ API Reference
 
-```yaml
-world:
-  num_regions: 8
-  seed: 42
+### `POST /api/simulate`
 
-resources:
-  initial_range:
-    water: [50, 100]
-    food: [40, 90]
-    energy: [30, 80]
-    land: [60, 100]
-  depletion_rate_per_cycle: 0.02
-
-events:
-  drought_probability: 0.05
-  flood_probability: 0.03
-  heatwave_probability: 0.04
-  fertile_season_probability: 0.06
-
-agents:
-  algorithm: PPO
-  learning_rate: 0.0003
-  gamma: 0.99
-  episodes: 1000
-
-simulation:
-  cycles_per_episode: 200
-  log_interval: 10
+**Request body:**
+```json
+{
+  "seed": 42,
+  "tick_start": 1,
+  "tick_end": 120
+}
 ```
+
+**Response includes:**
+- `summary` — final-tick aggregates: total population, GDP, welfare, trade execution rate, climate events
+- `states` — per-state snapshot with dominant strategy, strategy tags, and scores
+- `strategy_mix` — count of each dominant strategy across all states
+- `resilience_ranking` — states ranked by composite resilience score
+- `trade` — global trade analytics (execution rate, volume by resource/state)
+- `climate` — event frequency counts and average shock intensity
+- `series` — global time series (population, GDP, welfare, trade volume per tick)
+- `state_series` — per-state time series
+- `bid_ask_by_state` — bid and ask order counts per state
+- `bid_ask_over_time` — per-tick bid/ask volumes and average prices
+- `resource_consumption` — per-state resource consumed vs generated at final tick
 
 ---
 
@@ -467,27 +478,13 @@ simulation:
 
 | Metric | Description |
 |---|---|
-| **Survival Rate** | Fraction of regions alive at end of simulation |
-| **Mean Resource Level** | Average resource stock across all regions and cycles |
-| **Trade Volume** | Total inter-region resource flows per cycle |
-| **Collapse Events** | Number and timing of regional collapses |
-| **Gini Coefficient** | Resource inequality across regions over time |
-| **Strategy Entropy** | Diversity of agent strategies (high = diverse, low = convergent) |
-
----
-
-## 🧪 Testing
-
-```bash
-pytest tests/ -v
-```
-
-Tests cover:
-- Resource depletion arithmetic
-- Event application correctness
-- Agent action validity
-- Trade proposal handshake logic
-- Simulation runner determinism (fixed seed)
+| **Trade Execution Rate** | Fraction of trade orders successfully executed |
+| **Welfare Index** | Average welfare score across all states (0–1) |
+| **Inequality Index** | Average inequality score across all states (0–1) |
+| **GDP Growth Rate** | Average state GDP growth rate (%) |
+| **Net Migration** | Cumulative migration balance per state |
+| **Climate Resilience Score** | Composite score: welfare × 0.35 + GDP growth × 0.25 + trade rate × 0.2 + equity × 0.2 |
+| **Critical States** | States with welfare < 0.3 or negative GDP growth at the final tick |
 
 ---
 
@@ -513,5 +510,8 @@ This project is licensed under the [MIT License](LICENSE).
 ## 🙏 Acknowledgements
 
 - Inspired by research in multi-agent systems, resource economics, and climate adaptation modeling
-- RL framework built on [Stable-Baselines3](https://stable-baselines3.readthedocs.io/)
-- Visualization powered by [Streamlit](https://streamlit.io/) and [Plotly](https://plotly.com/)
+- Backend powered by [FastAPI](https://fastapi.tiangolo.com/) and [Uvicorn](https://www.uvicorn.org/)
+- Frontend built with [React](https://react.dev/), [Vite](https://vitejs.dev/), [Recharts](https://recharts.org/), and [Three.js](https://threejs.org/)
+- Visualization powered by [Matplotlib](https://matplotlib.org/) and [Plotly](https://plotly.com/)
+- Dashboard UI via [Gradio](https://www.gradio.app/)
+- AI briefings via [Ollama](https://ollama.com/)
