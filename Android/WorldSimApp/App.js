@@ -4,7 +4,7 @@ import {
   Animated, Dimensions, ActivityIndicator, TextInput, Platform,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { COLORS, API_BASE } from './src/config';
+import { COLORS } from './src/config';
 import Svg, { Path, Circle, Text as SvgText, G } from 'react-native-svg';
 import { geoMercator, geoPath } from 'd3-geo';
 
@@ -133,7 +133,7 @@ function SplashView({ onDone }) {
 }
 
 /* ───────────────────── DASHBOARD TAB ───────────────────── */
-function DashboardTab({ apiBase, onSimulationData }) {
+function DashboardTab({ onSimulationData }) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
@@ -236,7 +236,7 @@ function DashboardTab({ apiBase, onSimulationData }) {
       {!data && !loading && (
         <View style={[s.card, { alignItems: 'center', paddingVertical: 40 }]}>
           <Text style={{ fontSize: 48, marginBottom: 12 }}>🌐</Text>
-          <Text style={[s.desc, { textAlign: 'center' }]}>Press "Launch Simulation" to begin.{'\n'}Make sure the FastAPI backend is running on port 8000.</Text>
+          <Text style={[s.desc, { textAlign: 'center' }]}>Press "Launch Simulation" to begin.{'\n'}Demo dashboard data will load instantly.</Text>
         </View>
       )}
     </ScrollView>
@@ -397,7 +397,7 @@ function gradeColor(g) {
 }
 
 /* ───────────────────── AGENTS TAB ───────────────────── */
-function AgentsTab({ apiBase, simulationData, onSimulationData }) {
+function AgentsTab({ simulationData, onSimulationData }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -418,8 +418,8 @@ function AgentsTab({ apiBase, simulationData, onSimulationData }) {
       <Text style={s.desc}>State agents ka live performance yaha dikhega: grade, resilience, welfare, trade efficiency, strategy.</Text>
 
       <View style={s.card}>
-        <Text style={s.cardLabel}>Agent Source</Text>
-        <Text style={s.desc}>Backend: {apiBase}</Text>
+        <Text style={s.cardLabel}>Agent Data</Text>
+        <Text style={s.desc}>Frontend demo simulation source active.</Text>
         <TouchableOpacity style={[s.btn, loading && { opacity: 0.5 }]} onPress={loadAgents} disabled={loading}>
           {loading ? <ActivityIndicator color="#000" size="small" /> : <Text style={s.btnText}>🔄 Load Agent Data</Text>}
         </TouchableOpacity>
@@ -463,61 +463,41 @@ function AgentsTab({ apiBase, simulationData, onSimulationData }) {
 }
 
 /* ───────────────────── AI TAB ───────────────────── */
-function AITab({ apiBase, simulationData }) {
-  const [status, setStatus] = useState(null);
-  const [checking, setChecking] = useState(false);
+function AITab({ simulationData }) {
   const [model, setModel] = useState('gemma3:4b');
   const [briefing, setBriefing] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
 
-  const checkOllama = async () => {
-    setChecking(true);
-    try {
-      const res = await fetch(`${apiBase}/api/ollama/status`);
-      const d = await res.json();
-      setStatus(d);
-    } catch (e) { setStatus({ status: 'error', message: e.message }); }
-    setChecking(false);
-  };
-
   const runAnalysis = async () => {
     setAnalyzing(true); setBriefing('');
-    try {
-      const simData = simulationData || await (async () => {
-        const simRes = await fetch(`${apiBase}/api/simulate`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ seed: 42, tick_start: 1, tick_end: 120 }),
-        });
-        return simRes.json();
-      })();
+    const simData = simulationData || MOCK_SIMULATION_DATA;
+    const topState = simData?.resilience_ranking?.[0]?.state || 'Maharashtra';
+    const avgWelfare = simData?.summary?.avg_welfare_index || 72.8;
+    const domStrategy = simData?.summary?.dominant_strategy || 'Balanced Growth';
+    const alertState = simData?.states?.find((st) => (st.grade || '').toUpperCase() === 'D')?.state || 'Bihar';
 
-      const aiRes = await fetch(`${apiBase}/api/ollama/analyze`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model, summary: simData.summary, state_table: simData.states }),
-      });
-      const aiData = await aiRes.json();
-      setBriefing(aiData.briefing || 'No response');
-    } catch (e) { setBriefing('Error: ' + e.message); }
-    setAnalyzing(false);
+    const localBriefing = [
+      `Model: ${model} (Demo Frontend Mode)`,
+      `National welfare trend remains stable at ${avgWelfare.toFixed(1)} with ${domStrategy} emerging as the dominant policy mix.`,
+      `${topState} is currently leading the resilience index and can be used as a benchmark governance profile.`,
+      `Priority intervention should focus on ${alertState} through targeted welfare buffers, trade corridor expansion, and migration balancing.`,
+      'Recommendation: maintain balanced growth in top states while deploying corrective social and infra packages in low-grade clusters.',
+    ].join('\n\n');
+
+    setTimeout(() => {
+      setBriefing(localBriefing);
+      setAnalyzing(false);
+    }, 850);
   };
 
   return (
     <ScrollView style={s.tabContent} contentContainerStyle={{ paddingBottom: 40 }}>
       <Text style={s.sectionTitle}>🤖 AI Strategic Advisor</Text>
-      <Text style={s.desc}>Connect to Ollama for AI-powered geopolitical analysis of simulation results.</Text>
+      <Text style={s.desc}>Frontend-only AI briefing generator for hackathon presentation mode.</Text>
 
       <View style={s.card}>
-        <Text style={s.cardLabel}>Ollama Status</Text>
-        <TouchableOpacity style={s.btnOutline} onPress={checkOllama} disabled={checking}>
-          <Text style={s.btnOutlineText}>{checking ? 'Checking…' : '🔍 Check Connection'}</Text>
-        </TouchableOpacity>
-        {status && (
-          <View style={[s.statusBox, { borderColor: status.status === 'connected' ? COLORS.success : COLORS.danger }]}>
-            <Text style={{ color: status.status === 'connected' ? COLORS.success : COLORS.danger, fontWeight: '700' }}>
-              {status.status === 'connected' ? '✅ Connected' : '❌ ' + (status.message || 'Disconnected')}
-            </Text>
-          </View>
-        )}
+        <Text style={s.cardLabel}>AI Mode</Text>
+        <Text style={s.desc}>Local briefing synthesis active. No backend/database dependency.</Text>
       </View>
 
       <View style={s.card}>
@@ -539,56 +519,20 @@ function AITab({ apiBase, simulationData }) {
 }
 
 /* ───────────────────── SETTINGS TAB ───────────────────── */
-function SettingsTab({ apiBase, onChangeApiBase }) {
-  const [health, setHealth] = useState(null);
-  const [apiInput, setApiInput] = useState(apiBase);
-
-  useEffect(() => {
-    setApiInput(apiBase);
-  }, [apiBase]);
-
-  const checkHealth = async () => {
-    try {
-      const res = await fetch(`${apiBase}/api/health`);
-      setHealth(await res.json());
-    } catch (e) { setHealth({ error: e.message }); }
-  };
-
-  useEffect(() => { checkHealth(); }, []);
+function SettingsTab() {
 
   return (
     <ScrollView style={s.tabContent} contentContainerStyle={{ paddingBottom: 40 }}>
       <Text style={s.sectionTitle}>⚙️ Settings & Status</Text>
 
       <View style={s.card}>
-        <Text style={s.cardLabel}>Backend Status</Text>
-        <Text style={s.desc}>API: {apiBase}</Text>
-        <TextInput
-          style={s.input}
-          value={apiInput}
-          onChangeText={setApiInput}
-          autoCapitalize="none"
-          autoCorrect={false}
-          placeholder="http://192.168.x.x:8000"
-          placeholderTextColor={COLORS.textMuted}
-        />
-        <TouchableOpacity
-          style={s.btnOutline}
-          onPress={() => onChangeApiBase(apiInput.trim() || apiBase)}
-        >
-          <Text style={s.btnOutlineText}>📡 Save Mobile Backend URL</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.btnOutline} onPress={checkHealth}>
-          <Text style={s.btnOutlineText}>🔄 Refresh</Text>
-        </TouchableOpacity>
-        {health && !health.error && (
-          <View style={s.statusGrid}>
-            <StatusRow label="API" ok={true} />
-            <StatusRow label="Ollama" ok={health.ollama === 'connected'} />
-            <StatusRow label="Dataset" ok={!!health.dataset_rows} detail={`${health.dataset_rows} rows`} />
-          </View>
-        )}
-        {health?.error && <Text style={s.errorText}>⚠  {health.error}</Text>}
+        <Text style={s.cardLabel}>Mode</Text>
+        <Text style={s.desc}>Frontend Only Demo Mode</Text>
+        <View style={s.statusGrid}>
+          <StatusRow label="Backend" ok={false} detail="Disabled" />
+          <StatusRow label="Database" ok={false} detail="Disabled" />
+          <StatusRow label="Demo Data" ok={true} detail="Active" />
+        </View>
       </View>
 
       <View style={s.card}>
@@ -601,7 +545,7 @@ function SettingsTab({ apiBase, onChangeApiBase }) {
 
       <View style={s.card}>
         <Text style={s.cardLabel}>Setup Instructions</Text>
-        <Text style={s.code}>1. Start backend:{'\n'}   python -m uvicorn worldsim_api:app --host 0.0.0.0 --port 8000{'\n\n'}2. Phone + laptop same WiFi pe rakho{'\n\n'}3. Settings me API URL set karo:{'\n'}   http://YOUR_LAPTOP_IP:8000{'\n\n'}4. Expo Go me QR scan karke run karo</Text>
+        <Text style={s.code}>1. Open app in Expo Go{'\n\n'}2. Tap Launch Simulation (loads local demo data){'\n\n'}3. Use Agents + AI tabs for presentation flow{'\n\n'}4. No backend/database needed</Text>
       </View>
     </ScrollView>
   );
@@ -628,7 +572,6 @@ const TABS = [
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [apiBase, setApiBase] = useState(API_BASE);
   const [simulationData, setSimulationData] = useState(null);
 
   if (showSplash) return <SplashView onDone={() => setShowSplash(false)} />;
@@ -652,10 +595,10 @@ export default function App() {
       </View>
 
       {/* Tab Content */}
-      {activeTab === 'dashboard' && <DashboardTab apiBase={apiBase} onSimulationData={setSimulationData} />}
-      {activeTab === 'agents' && <AgentsTab apiBase={apiBase} simulationData={simulationData} onSimulationData={setSimulationData} />}
-      {activeTab === 'ai' && <AITab apiBase={apiBase} simulationData={simulationData} />}
-      {activeTab === 'settings' && <SettingsTab apiBase={apiBase} onChangeApiBase={setApiBase} />}
+      {activeTab === 'dashboard' && <DashboardTab onSimulationData={setSimulationData} />}
+      {activeTab === 'agents' && <AgentsTab simulationData={simulationData} onSimulationData={setSimulationData} />}
+      {activeTab === 'ai' && <AITab simulationData={simulationData} />}
+      {activeTab === 'settings' && <SettingsTab />}
 
       {/* Bottom Tab Bar */}
       <View style={s.tabBar}>
